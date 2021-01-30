@@ -34,6 +34,9 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Random;
 import java.util.UUID;
 
 import no.nordicsemi.android.ble.data.Data;
@@ -77,7 +80,16 @@ public class BlinkyManager extends ObservableBleManager {
     private final MutableLiveData<Boolean> buttonState = new MutableLiveData<>();
 
     private BluetoothGattCharacteristic buttonCharacteristic, ledCharacteristic;
+
+    /**
+     * Fruity mesh
+     */
     private BluetoothGattCharacteristic maTxCharacteristic, maRxCharacteristic;
+    private int partnerId;
+    private int virtualPartnerId;
+    private byte[] encryptionKey;
+    private byte[] decryptionKey;
+
     private LogSession logSession;
     private boolean supported;
     private boolean ledOn;
@@ -172,7 +184,36 @@ public class BlinkyManager extends ObservableBleManager {
         }
     };
 
-    private final FruityEncryptDataCallback fruityEncryptDataCallback = new FruityEncryptDataCallback();
+    private final FruityEncryptDataCallback fruityEncryptDataCallback = new FruityEncryptDataCallback() {
+        @Override
+        public void onANonceReceived(@NonNull Data customANoncePacket) {
+            partnerId = FruityPacket.getSenderId(customANoncePacket);
+            // generate encrypt and decrypt key
+            int[] aNonce = FruityPacket.readEncryptCustomANonce(customANoncePacket);
+            byte[] plainText = FruityPacket.createPlainTextForSecretKey(FruityPacket.nodeId, aNonce);
+            encryptionKey = FruityPacket.generateSecretKey(plainText, FruityPacket.secretKey);
+            int sNonce[] = new int[2];
+            try {
+                SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
+                sNonce[0] = random.nextInt();
+                sNonce[1] = random.nextInt();
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+                return;
+            }
+            plainText = FruityPacket.createPlainTextForSecretKey(FruityPacket.nodeId, sNonce);
+            decryptionKey = FruityPacket.generateSecretKey(plainText, FruityPacket.secretKey);
+            if (encryptionKey == null || decryptionKey == null) {
+                return;
+            }
+            Log.d("FM", "EncryptionKey:" + encryptionKey);
+            Log.d("FM", "DecryptionKey:" + decryptionKey);
+            FruityPacket.ConnPacketEncryptCustomSNonce customSNonce = new FruityPacket.ConnPacketEncryptCustomSNonce(
+                    FruityPacket.MessageType.ENCRYPT_CUSTOM_SNONCE, FruityPacket.nodeId, partnerId,
+                    sNonce[0], sNonce[1]);
+            Data sNonceData = new Data(FruityPacket.createEncryptCustomSNonce(customSNonce));
+        }
+    };
 
     /**
      * BluetoothGatt callbacks object.
@@ -190,24 +231,12 @@ public class BlinkyManager extends ObservableBleManager {
         }
 
         private void startHandshake() {
-            // stub
-            FruityPacket.ConnPacketEncryptCustomStart packet = new FruityPacket.ConnPacketEncryptCustomStart();
-            packet.header.messageType = FruityPacket.MessageType.ENCRYPT_CUSTOM_START;
-            packet.header.sender = 259; // TODO
-            packet.header.receiver = 0; // Virtual Partner ID
-            packet.version = 1;
-            packet.fmKeyId = FruityPacket.FmKeyId.NODE;
-            packet.tunnelType = 0;
-            packet.reserved = 0;
-            Data encryptCustomStart = new Data(FruityPacket.createEncryptCustomStartPacket(packet));
+            virtualPartnerId = FruityPacket.nodeId + FruityPacket.NODE_ID_VIRTUAL_BASE;
+            FruityPacket.ConnPacketEncryptCustomStart encryptCustomStartPacket = new FruityPacket.ConnPacketEncryptCustomStart(
+                    FruityPacket.MessageType.ENCRYPT_CUSTOM_START, FruityPacket.nodeId, 0, 1,
+                    FruityPacket.FmKeyId.NODE, 0, 0);
+            Data encryptCustomStart = new Data(FruityPacket.createEncryptCustomStartPacket(encryptCustomStartPacket));
             writeCharacteristic(maRxCharacteristic, encryptCustomStart).with(ledCallback).enqueue();
-        }
-
-        private void createPacket(FruityPacket.ConnPacketEncryptCustomStart packet, int dataLength, boolean reliable) {
-            FruityPacket.BaseConnectionSendData sendData = new FruityPacket.BaseConnectionSendData();
-            sendData.characteristicHandle = 0; // not need to set
-            sendData.dataLength = dataLength;
-            sendData.deliveryOption = reliable ? FruityPacket.DeliveryOption.WRITE_REQ : FruityPacket.DeliveryOption.WRITE_CMD;
         }
 
         @Override
