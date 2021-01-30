@@ -86,7 +86,7 @@ public class BlinkyManager extends ObservableBleManager {
      */
     private BluetoothGattCharacteristic maTxCharacteristic, maRxCharacteristic;
     private int partnerId;
-    private int virtualPartnerId;
+    //    private int virtualPartnerId;
     private byte[] encryptionKey;
     private byte[] decryptionKey;
 
@@ -132,22 +132,22 @@ public class BlinkyManager extends ObservableBleManager {
         return !supported;
     }
 
-	/**
-	 * The Button callback will be notified when a notification from Button characteristic
-	 * has been received, or its data was read.
-	 * <p>
-	 * If the data received are valid (single byte equal to 0x00 or 0x01), the
-	 * {@link BlinkyButtonDataCallback#onButtonStateChanged} will be called.
-	 * Otherwise, the {@link BlinkyButtonDataCallback#onInvalidDataReceived(BluetoothDevice, Data)}
-	 * will be called with the data received.
-	 */
-	private	final BlinkyButtonDataCallback buttonCallback = new BlinkyButtonDataCallback() {
-		@Override
-		public void onButtonStateChanged(@NonNull final BluetoothDevice device,
-										 final boolean pressed) {
-			log(LogContract.Log.Level.APPLICATION, "Button " + (pressed ? "pressed" : "released"));
-			buttonState.setValue(pressed);
-		}
+    /**
+     * The Button callback will be notified when a notification from Button characteristic
+     * has been received, or its data was read.
+     * <p>
+     * If the data received are valid (single byte equal to 0x00 or 0x01), the
+     * {@link BlinkyButtonDataCallback#onButtonStateChanged} will be called.
+     * Otherwise, the {@link BlinkyButtonDataCallback#onInvalidDataReceived(BluetoothDevice, Data)}
+     * will be called with the data received.
+     */
+    private final BlinkyButtonDataCallback buttonCallback = new BlinkyButtonDataCallback() {
+        @Override
+        public void onButtonStateChanged(@NonNull final BluetoothDevice device,
+                                         final boolean pressed) {
+            log(LogContract.Log.Level.APPLICATION, "Button " + (pressed ? "pressed" : "released"));
+            buttonState.setValue(pressed);
+        }
 
         @Override
         public void onInvalidDataReceived(@NonNull final BluetoothDevice device,
@@ -190,6 +190,8 @@ public class BlinkyManager extends ObservableBleManager {
             partnerId = FruityPacket.getSenderId(customANoncePacket);
             // generate encrypt and decrypt key
             int[] aNonce = FruityPacket.readEncryptCustomANonce(customANoncePacket);
+            Log.d("FM", "ANonceFirst: " + aNonce[0]);
+            Log.d("FM", "ANonceSecond: " + aNonce[1]);
             byte[] plainText = FruityPacket.createPlainTextForSecretKey(FruityPacket.nodeId, aNonce);
             encryptionKey = FruityPacket.generateSecretKey(plainText, FruityPacket.secretKey);
             int sNonce[] = new int[2];
@@ -197,6 +199,8 @@ public class BlinkyManager extends ObservableBleManager {
                 SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
                 sNonce[0] = random.nextInt();
                 sNonce[1] = random.nextInt();
+                Log.d("FM", "SNonceFirst: " + sNonce[0]);
+                Log.d("FM", "SNonceSecond: " + sNonce[1]);
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
                 return;
@@ -212,6 +216,7 @@ public class BlinkyManager extends ObservableBleManager {
                     FruityPacket.MessageType.ENCRYPT_CUSTOM_SNONCE, FruityPacket.nodeId, partnerId,
                     sNonce[0], sNonce[1]);
             Data sNonceData = new Data(FruityPacket.createEncryptCustomSNonce(customSNonce));
+            writeCharacteristic(maRxCharacteristic, sNonceData).with(ledCallback).enqueue();
         }
     };
 
@@ -231,7 +236,8 @@ public class BlinkyManager extends ObservableBleManager {
         }
 
         private void startHandshake() {
-            virtualPartnerId = FruityPacket.nodeId + FruityPacket.NODE_ID_VIRTUAL_BASE;
+            // need?
+//            virtualPartnerId = FruityPacket.nodeId + FruityPacket.NODE_ID_VIRTUAL_BASE;
             FruityPacket.ConnPacketEncryptCustomStart encryptCustomStartPacket = new FruityPacket.ConnPacketEncryptCustomStart(
                     FruityPacket.MessageType.ENCRYPT_CUSTOM_START, FruityPacket.nodeId, 0, 1,
                     FruityPacket.FmKeyId.NODE, 0, 0);

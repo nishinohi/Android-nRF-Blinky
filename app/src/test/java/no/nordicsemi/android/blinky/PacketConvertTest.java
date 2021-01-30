@@ -11,6 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import no.nordicsemi.android.ble.data.Data;
@@ -56,7 +57,7 @@ public class PacketConvertTest {
     }
 
     @Test
-    public void aNonce_Encrypt_Test() throws IllegalBlockSizeException, InvalidKeyException, BadPaddingException, NoSuchAlgorithmException, NoSuchPaddingException {
+    public void generate_SecretKye_From_ANonce_Test() throws IllegalBlockSizeException, InvalidKeyException, BadPaddingException, NoSuchAlgorithmException, NoSuchPaddingException {
         byte plainText[] = new byte[]{0x01, 0x00, 0x1D, 0x4C, (byte) 0xFA, 0x4E, 0x32, 0x19, 0x68, 0x2A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0};
         byte secretKey[] = new byte[]{0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
         byte expect[] = new byte[]{0x03, 0x1C, (byte) 0xBD, (byte) 0xBA, 0x73, 0x42, (byte) 0xFD, (byte) 0xB0, (byte) 0x95, 0x13, (byte) 0x81, (byte) 0xAB, (byte) 0x97, (byte) 0x94, (byte) 0x8C, (byte) 0xD9};
@@ -64,7 +65,7 @@ public class PacketConvertTest {
     }
 
     @Test
-    public void create_ANonce_Encrypt_Plaint_Text_Test() {
+    public void create_ANonce_Plaint_Text_For_Secret_Key_Test() {
         int aNonce[] = new int[]{1325026333, 711465266};
         int nodeId = FruityPacket.nodeId;
         byte expect[] = new byte[]{
@@ -74,9 +75,21 @@ public class PacketConvertTest {
     }
 
     @Test
-    public void get_SenderId_From_Packet_Header_Test() {
+    public void get_Sender_Id_From_Packet_Header_Test() {
         // sender: 259
         byte packet[] = {0x01, 0x03, 0x01, 0x64, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00};
         assertThat("senderId", FruityPacket.getSenderId(new Data(packet)), is(259));
+    }
+
+    @Test
+    public void encrypt_Test() {
+        // first: 0x4EFA4C1D
+        // second: 0x2A681932
+        int aNonce[] = new int[]{1325026333, 711465266};
+        byte plainText[] = new byte[]{0x1B, 0x01, 0x00, 0x02, 0x00, (byte) 0xFC, (byte) 0xD3, (byte) 0xB8, 0x64, (byte) 0xAD, 0x0F, (byte) 0xE8, 0x19, 0x00, 0x00, 0x00};
+        SecretKey sessionKey = new SecretKeySpec(new byte[]{0x03, 0x1C, (byte) 0xBD, (byte) 0xBA, 0x73, 0x42, (byte) 0xFD, (byte) 0xB0, (byte) 0x95, 0x13, (byte) 0x81, (byte) 0xAB, (byte) 0x97, (byte) 0x94, (byte) 0x8C, (byte) 0xD9}, "AES");
+        FruityPacket.encryptPacket(plainText, aNonce, sessionKey);
+        byte[] expect = new byte[]{0x79, 0x65, (byte) 0xA5, (byte) 0xB6, (byte) 0xA6, (byte) 0xA7, 0x58, (byte) 0x89, 0x0D, (byte) 0xE8, 0x77, (byte) 0xED, (byte) 0xDC, 0x26, 0x69, (byte) 0xE4};
+        assertThat("encrypt", FruityPacket.encryptPacket(plainText, aNonce, sessionKey), is(expect));
     }
 }

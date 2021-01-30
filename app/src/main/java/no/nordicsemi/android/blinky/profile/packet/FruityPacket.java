@@ -23,12 +23,46 @@ public class FruityPacket {
         byte headerBytes[] = new byte[ConnPacketHeader.SIZEOF_CONN_PACKET_HEADER];
         int offset = 0;
         headerBytes[offset++] = (byte) header.messageType.getTypeValue();
-        byte[] temp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(header.sender).array();
+        byte[] temp = convertIntToBytes(header.sender, ByteOrder.LITTLE_ENDIAN);
         System.arraycopy(temp, 0, headerBytes, offset, 2);
         offset += 2;
-        temp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(header.receiver).array();
+        temp = convertIntToBytes(header.receiver, ByteOrder.LITTLE_ENDIAN);
         System.arraycopy(temp, 0, headerBytes, offset, 2);
         return headerBytes;
+    }
+
+    public static byte[] encryptPacket(byte[] plainText, int aNonce[], SecretKey secretKey) {
+        if (aNonce.length != 2) {
+            return null;
+        }
+        byte encrypt[] = new byte[16];
+        System.arraycopy(plainText, 0, encrypt, 0, plainText.length);
+        byte keyStream[];
+        try {
+            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+            Cipher cipher = Cipher.getInstance("AES_128/ECB/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            byte aNoncePlainText[] = new byte[16];
+            System.arraycopy(convertIntToBytes(aNonce[0], ByteOrder.LITTLE_ENDIAN), 0, aNoncePlainText, 0, 4);
+            System.arraycopy(convertIntToBytes(aNonce[1], ByteOrder.LITTLE_ENDIAN), 0, aNoncePlainText, 4, 4);
+            keyStream = cipher.doFinal(aNoncePlainText);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return xorBytes(plainText, keyStream);
+    }
+
+    public static byte[] xorBytes(byte[] src, byte[] xor) {
+        final int byteLen = src.length;
+        if (byteLen != xor.length) {
+            return null;
+        }
+        byte[] dist = new byte[byteLen];
+        for (int ii = 0; ii < byteLen; ++ii) {
+            dist[ii] = (byte)(src[ii] ^ xor[ii]);
+        }
+        return dist;
     }
 
     /**
@@ -43,13 +77,13 @@ public class FruityPacket {
         System.arraycopy(createConnHeaderBytes(packet.header), 0, convertPacket, 0, 5);
         int offset = ConnPacketHeader.SIZEOF_CONN_PACKET_HEADER;
         convertPacket[offset++] = (byte) packet.version;
-        byte temp[] = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(packet.fmKeyId.getKeyId()).array();
+        byte temp[] = convertIntToBytes(packet.fmKeyId.getKeyId(), ByteOrder.LITTLE_ENDIAN);
         System.arraycopy(temp, 0, convertPacket, offset, 4);
         offset += 4;
-        temp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(packet.reserved).array();
+        temp = convertIntToBytes(packet.reserved, ByteOrder.LITTLE_ENDIAN);
         convertPacket[offset] = temp[0];
         convertPacket[offset] = (byte) (convertPacket[offset] << 2);
-        temp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(packet.tunnelType).array();
+        temp = convertIntToBytes(packet.tunnelType, ByteOrder.LITTLE_ENDIAN);
         convertPacket[offset] = (byte) (convertPacket[offset] | temp[0]);
         return convertPacket;
     }
@@ -58,19 +92,23 @@ public class FruityPacket {
         byte convertPacket[] = new byte[ConnPacketEncryptCustomSNonce.SIZEOF_CONN_PACKET_ENCRYPT_CUSTOM_SNONCE];
         System.arraycopy(createConnHeaderBytes(packet.header), 0, convertPacket, 0, 5);
         int offset = ConnPacketHeader.SIZEOF_CONN_PACKET_HEADER;
-        System.arraycopy(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(packet.sNonce[0]).array(),
+        System.arraycopy(convertIntToBytes(packet.sNonce[0], ByteOrder.LITTLE_ENDIAN),
                 0, convertPacket, offset, 4);
         offset += 4;
-        System.arraycopy(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(packet.sNonce[1]).array(),
+        System.arraycopy(convertIntToBytes(packet.sNonce[1], ByteOrder.LITTLE_ENDIAN),
                 0, convertPacket, offset, 4);
         return convertPacket;
     }
 
-    public static int[] readEncryptCustomANonce(Data aNonoce) {
-        byte customANoncePacket[] = aNonoce.getValue();
+    public static int[] readEncryptCustomANonce(Data aNonce) {
+        byte customANoncePacket[] = aNonce.getValue();
         int aNonceFirst = ByteBuffer.wrap(customANoncePacket, 5, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
         int aNonceSecond = ByteBuffer.wrap(customANoncePacket, 9, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
         return new int[]{aNonceFirst, aNonceSecond};
+    }
+
+    public static byte[] convertIntToBytes(int sNonce, ByteOrder order) {
+        return ByteBuffer.allocate(4).order(order).putInt(sNonce).array();
     }
 
     /**
@@ -82,11 +120,11 @@ public class FruityPacket {
      */
     public static byte[] createPlainTextForSecretKey(int nodeId, int aNonce[]) {
         byte plainText[] = new byte[16];
-        byte[] temp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(nodeId).array();
+        byte[] temp = convertIntToBytes(nodeId, ByteOrder.LITTLE_ENDIAN);
         System.arraycopy(temp, 0, plainText, 0, 2);
-        temp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(aNonce[0]).array();
+        temp = convertIntToBytes(aNonce[0], ByteOrder.LITTLE_ENDIAN);
         System.arraycopy(temp, 0, plainText, 2, 4);
-        temp = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(aNonce[1]).array();
+        temp = convertIntToBytes(aNonce[1], ByteOrder.LITTLE_ENDIAN);
         System.arraycopy(temp, 0, plainText, 6, 4);
         return plainText;
     }

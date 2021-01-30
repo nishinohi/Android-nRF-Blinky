@@ -29,7 +29,7 @@ public abstract class FruityEncryptDataCallback implements ProfileDataCallback, 
                 onANonceReceived(packetData);
                 break;
             default:
-                throw new IllegalStateException("Unexpected value: " + messageType);
+//                throw new IllegalStateException("Unexpected value: " + messageType);
         }
     }
 
