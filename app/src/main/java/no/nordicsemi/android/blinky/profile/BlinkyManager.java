@@ -95,6 +95,7 @@ public class BlinkyManager extends ObservableBleManager {
     private SecretKey encryptionKey;
     private int[] decryptionNonce;
     private SecretKey decryptionKey;
+    private FruityPacket.EncryptionState encryptionState = FruityPacket.EncryptionState.NOT_ENCRYPTED;
 
     private LogSession logSession;
     private boolean supported;
@@ -219,6 +220,7 @@ public class BlinkyManager extends ObservableBleManager {
             }
             Log.d("FM", "EncryptionKey:" + encryptionKey.toString());
             Log.d("FM", "DecryptionKey:" + decryptionKey.toString());
+            encryptionState = FruityPacket.EncryptionState.ENCRYPTED;
             FruityPacket.ConnPacketEncryptCustomSNonce customSNonce = new FruityPacket.ConnPacketEncryptCustomSNonce(
                     FruityPacket.MessageType.ENCRYPT_CUSTOM_SNONCE, FruityPacket.nodeId, partnerId,
                     decryptionNonce[0], decryptionNonce[1]);
@@ -249,6 +251,7 @@ public class BlinkyManager extends ObservableBleManager {
         private void startHandshake() {
             // need?
 //            virtualPartnerId = FruityPacket.nodeId + FruityPacket.NODE_ID_VIRTUAL_BASE;
+            encryptionState = FruityPacket.EncryptionState.ENCRYPTING;
             FruityPacket.ConnPacketEncryptCustomStart encryptCustomStartPacket = new FruityPacket.ConnPacketEncryptCustomStart(
                     FruityPacket.MessageType.ENCRYPT_CUSTOM_START, FruityPacket.nodeId, 0, 1,
                     FruityPacket.FmKeyId.NODE, 0, 0);

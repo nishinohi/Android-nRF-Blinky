@@ -1,8 +1,5 @@
 package no.nordicsemi.android.blinky;
 
-import androidx.annotation.RestrictTo;
-import androidx.core.widget.TextViewCompat;
-
 import org.junit.Test;
 
 import java.security.InvalidKeyException;
@@ -116,7 +113,17 @@ public class PacketConvertTest {
         int aNonce[] = new int[]{1325026333, 711465266};
         SecretKey sessionKey = new SecretKeySpec(new byte[]{0x03, 0x1C, (byte) 0xBD, (byte) 0xBA, 0x73, 0x42, (byte) 0xFD, (byte) 0xB0, (byte) 0x95, 0x13, (byte) 0x81, (byte) 0xAB, (byte) 0x97, (byte) 0x94, (byte) 0x8C, (byte) 0xD9}, "AES");
         byte[] encryptedPacket = new byte[]{(byte) 0x79, (byte) 0x65, (byte) 0xA5, (byte) 0xB6, (byte) 0xA6, (byte) 0xA7, (byte) 0x58, (byte) 0x89, (byte) 0x0D, (byte) 0xE8, (byte) 0x77, (byte) 0xED, (byte) 0xDC, (byte) 0xCA, (byte) 0xCA, (byte) 0x47, (byte) 0x57};
-        byte[] expect = new byte[]{(byte)0xCA, (byte)0xCA, (byte)0x47, (byte)0x57, (byte)0xCB, (byte)0x48, (byte)0x41, (byte)0x6D, (byte)0x56, (byte)0x12, (byte)0xF5, (byte)0x63, (byte)0xDE, (byte)0x10, (byte)0x2C, (byte)0xD3};
-        assertThat("encrypt", FruityPacket.checkMIC(encryptedPacket, 17, aNonce, sessionKey), is(true));
+        assertThat("MIC Check", FruityPacket.checkMICValidation(encryptedPacket, aNonce, sessionKey), is(true));
+    }
+
+    @Test
+    public void decrypt_Test() {
+        // first, (byte)0x 0x4EFA4C1D
+        // second, (byte)0x 0x2A681932
+        int aNonce[] = new int[]{1325026333, 711465266};
+        SecretKey sessionKey = new SecretKeySpec(new byte[]{0x03, 0x1C, (byte) 0xBD, (byte) 0xBA, 0x73, 0x42, (byte) 0xFD, (byte) 0xB0, (byte) 0x95, 0x13, (byte) 0x81, (byte) 0xAB, (byte) 0x97, (byte) 0x94, (byte) 0x8C, (byte) 0xD9}, "AES");
+        byte[] encryptedPacket = new byte[]{(byte) 0x79, (byte) 0x65, (byte) 0xA5, (byte) 0xB6, (byte) 0xA6, (byte) 0xA7, (byte) 0x58, (byte) 0x89, (byte) 0x0D, (byte) 0xE8, (byte) 0x77, (byte) 0xED, (byte) 0xDC, (byte) 0xCA, (byte) 0xCA, (byte) 0x47, (byte) 0x57};
+        byte[] expect = new byte[]{(byte) 0x1B, (byte) 0x01, (byte) 0x00, (byte) 0x02, (byte) 0x00, (byte) 0xFC, (byte) 0xD3, (byte) 0xB8, (byte) 0x64, (byte) 0xAD, (byte) 0x0F, (byte) 0xE8, (byte) 0x19, (byte) 0x00, (byte) 0x00, (byte) 0x00};
+        assertThat("encrypt", FruityPacket.decryptPacket(encryptedPacket, encryptedPacket.length, aNonce, sessionKey), is(expect));
     }
 }
