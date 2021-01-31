@@ -36,8 +36,11 @@ import androidx.lifecycle.MutableLiveData;
 
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.UUID;
+
+import javax.crypto.spec.SecretKeySpec;
 
 import no.nordicsemi.android.ble.data.Data;
 import no.nordicsemi.android.ble.livedata.ObservableBleManager;
@@ -87,7 +90,9 @@ public class BlinkyManager extends ObservableBleManager {
     private BluetoothGattCharacteristic maTxCharacteristic, maRxCharacteristic;
     private int partnerId;
     //    private int virtualPartnerId;
+    private byte[] encryptionNonce;
     private byte[] encryptionKey;
+    private byte[] decryptionNonce;
     private byte[] decryptionKey;
 
     private LogSession logSession;
@@ -194,7 +199,7 @@ public class BlinkyManager extends ObservableBleManager {
             Log.d("FM", "ANonceSecond: " + aNonce[1]);
             byte[] plainText = FruityPacket.createPlainTextForSecretKey(FruityPacket.nodeId, aNonce);
             encryptionKey = FruityPacket.generateSecretKey(plainText, FruityPacket.secretKey);
-            int sNonce[] = new int[2];
+            int[] sNonce = new int[2];
             try {
                 SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
                 sNonce[0] = random.nextInt();
@@ -210,13 +215,15 @@ public class BlinkyManager extends ObservableBleManager {
             if (encryptionKey == null || decryptionKey == null) {
                 return;
             }
-            Log.d("FM", "EncryptionKey:" + encryptionKey);
-            Log.d("FM", "DecryptionKey:" + decryptionKey);
+            Log.d("FM", "EncryptionKey:" + Arrays.toString(encryptionKey));
+            Log.d("FM", "DecryptionKey:" + Arrays.toString(decryptionKey));
             FruityPacket.ConnPacketEncryptCustomSNonce customSNonce = new FruityPacket.ConnPacketEncryptCustomSNonce(
                     FruityPacket.MessageType.ENCRYPT_CUSTOM_SNONCE, FruityPacket.nodeId, partnerId,
                     sNonce[0], sNonce[1]);
-            Data sNonceData = new Data(FruityPacket.createEncryptCustomSNonce(customSNonce));
-            writeCharacteristic(maRxCharacteristic, sNonceData).with(ledCallback).enqueue();
+            // encrypt
+            byte nonEncryptPacket[] = FruityPacket.createEncryptCustomSNonce(customSNonce);
+            Data sNonceEncryptData = new Data(FruityPacket.encryptPacket(nonEncryptPacket, 13, aNonce, new SecretKeySpec(encryptionKey, "AES")));
+            writeCharacteristic(maRxCharacteristic, sNonceEncryptData).with(ledCallback).enqueue();
         }
     };
 

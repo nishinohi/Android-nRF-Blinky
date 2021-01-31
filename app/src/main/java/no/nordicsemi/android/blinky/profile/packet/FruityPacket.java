@@ -1,11 +1,19 @@
 package no.nordicsemi.android.blinky.profile.packet;
 
 
+import android.icu.util.ChineseCalendar;
+
+import com.google.android.material.chip.Chip;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -31,26 +39,51 @@ public class FruityPacket {
         return headerBytes;
     }
 
-    public static byte[] encryptPacket(byte[] plainText, int aNonce[], SecretKey secretKey) {
-        if (aNonce.length != 2) {
-            return null;
-        }
-        byte encrypt[] = new byte[16];
-        System.arraycopy(plainText, 0, encrypt, 0, plainText.length);
-        byte keyStream[];
+    public static byte[] encryptPacket(byte[] plainText, int packetRawLen, int[] aNonce, SecretKey secretKey) {
+        if (aNonce.length != 2) return null;
+
+        byte[] plainTextPadding = new byte[16];
+        System.arraycopy(plainText, 0, plainTextPadding, 0, plainText.length);
+        byte[] keyStream;
+        byte[] mic;
+        byte[] encryptPacket;
         try {
-            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-            Cipher cipher = Cipher.getInstance("AES_128/ECB/NoPadding");
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-            byte aNoncePlainText[] = new byte[16];
+            byte[] aNoncePlainText = new byte[16];
             System.arraycopy(convertIntToBytes(aNonce[0], ByteOrder.LITTLE_ENDIAN), 0, aNoncePlainText, 0, 4);
             System.arraycopy(convertIntToBytes(aNonce[1], ByteOrder.LITTLE_ENDIAN), 0, aNoncePlainText, 4, 4);
+            // generate key stream
+            Cipher cipher = Cipher.getInstance("AES_128/ECB/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
             keyStream = cipher.doFinal(aNoncePlainText);
+            encryptPacket = xorBytes(plainTextPadding, keyStream);
+            mic = generateMIC(aNonce, secretKey, encryptPacket, packetRawLen);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
-        return xorBytes(plainText, keyStream);
+        byte[] encryptPacketWithMic = new byte[packetRawLen + mic.length];
+        System.arraycopy(encryptPacket, 0, encryptPacketWithMic, 0, packetRawLen);
+        System.arraycopy(mic, 0, encryptPacketWithMic, packetRawLen, mic.length);
+        return encryptPacketWithMic;
+    }
+
+    public static byte[] generateMIC(int aNonce[], SecretKey secretKey, byte[] encryptedPacket, int packetLen) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+        if (aNonce.length != 2 && encryptedPacket.length != 16) return null;
+
+        // create aNonce plain text to generate key stream for mic
+        aNonce[1]++;
+        byte aNoncePlainText[] = new byte[16];
+        System.arraycopy(convertIntToBytes(aNonce[0], ByteOrder.LITTLE_ENDIAN), 0, aNoncePlainText, 0, 4);
+        System.arraycopy(convertIntToBytes(aNonce[1], ByteOrder.LITTLE_ENDIAN), 0, aNoncePlainText, 4, 4);
+        Cipher cipher = Cipher.getInstance("AES_128/ECB/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+        byte micKeyStream[] = cipher.doFinal(aNoncePlainText);
+        byte zeroPaddingEncryptPacket[] = new byte[16];
+        System.arraycopy(encryptedPacket, 0, zeroPaddingEncryptPacket, 0, packetLen);
+        byte xoredMic[] = xorBytes(micKeyStream, zeroPaddingEncryptPacket);
+        byte mic[] = new byte[4];
+        System.arraycopy(cipher.doFinal(xoredMic), 0, mic, 0, 4);
+        return mic;
     }
 
     public static byte[] xorBytes(byte[] src, byte[] xor) {
@@ -60,7 +93,7 @@ public class FruityPacket {
         }
         byte[] dist = new byte[byteLen];
         for (int ii = 0; ii < byteLen; ++ii) {
-            dist[ii] = (byte)(src[ii] ^ xor[ii]);
+            dist[ii] = (byte) (src[ii] ^ xor[ii]);
         }
         return dist;
     }
@@ -131,7 +164,6 @@ public class FruityPacket {
 
     public static byte[] generateSecretKey(byte[] plainText, SecretKey secretKey) {
         try {
-            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
             Cipher cipher = Cipher.getInstance("AES_128/ECB/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
             byte[] cipNoPadText = cipher.doFinal(plainText);
