@@ -38,7 +38,7 @@ public class FruityPacket {
         return headerBytes;
     }
 
-    public static byte[] encryptPacket(byte[] plainPacket, int packetLen, int[] encryptionNonce, SecretKey sessionEncryptionKey) {
+    public static byte[] encryptPacketWithMIC(byte[] plainPacket, int packetLen, int[] encryptionNonce, SecretKey sessionEncryptionKey) {
         if (encryptionNonce.length != 2) return null;
 
         byte[] packetZeroPadding = new byte[16];
