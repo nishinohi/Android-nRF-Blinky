@@ -36,8 +36,6 @@ import androidx.lifecycle.MutableLiveData;
 
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Arrays;
-import java.util.Random;
 import java.util.UUID;
 
 import javax.crypto.SecretKey;
@@ -226,10 +224,34 @@ public class BlinkyManager extends ObservableBleManager {
                     decryptionNonce[0], decryptionNonce[1]);
             // encrypt
             byte nonEncryptPacket[] = FruityPacket.createEncryptCustomSNonce(customSNonce);
-            Data sNonceEncryptData = new Data(FruityPacket.encryptPacket(nonEncryptPacket,
+            Data sNonceEncryptData = new Data(FruityPacket.encryptPacketWithMIC(nonEncryptPacket,
                     FruityPacket.ConnPacketEncryptCustomSNonce.SIZEOF_CONN_PACKET_ENCRYPT_CUSTOM_SNONCE,
                     encryptionNonce, encryptionKey));
             writeCharacteristic(maRxCharacteristic, sNonceEncryptData).with(ledCallback).enqueue();
+        }
+
+        @Override
+        public void onDataReceived(@NonNull BluetoothDevice device, @NonNull Data data) {
+            if (encryptionState != FruityPacket.EncryptionState.ENCRYPTED) {
+                Log.d("FM", "onDataReceived: " + data);
+                parsePacket(data);
+                return;
+            }
+
+            byte[] decryptPacket = FruityPacket.decryptPacket(data.getValue(), data.size(), decryptionNonce, decryptionKey);
+            if (decryptPacket == null) {
+                Log.d("FM", "Decrypt Failed");
+                return;
+            }
+            Log.d("FM", "onDataReceived: " + decryptPacket);
+            // increment
+            ++decryptionNonce[1];
+            parsePacket(new Data(decryptPacket));
+        }
+
+        @Override
+        public void onDataSent(@NonNull BluetoothDevice device, @NonNull Data data) {
+            if (encryptionState == FruityPacket.EncryptionState.ENCRYPTED) ++encryptionNonce[1];
         }
     };
 
