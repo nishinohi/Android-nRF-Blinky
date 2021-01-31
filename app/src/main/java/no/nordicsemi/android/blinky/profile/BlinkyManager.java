@@ -40,6 +40,7 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.UUID;
 
+import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import no.nordicsemi.android.ble.data.Data;
@@ -90,10 +91,10 @@ public class BlinkyManager extends ObservableBleManager {
     private BluetoothGattCharacteristic maTxCharacteristic, maRxCharacteristic;
     private int partnerId;
     //    private int virtualPartnerId;
-    private byte[] encryptionNonce;
-    private byte[] encryptionKey;
-    private byte[] decryptionNonce;
-    private byte[] decryptionKey;
+    private int[] encryptionNonce;
+    private SecretKey encryptionKey;
+    private int[] decryptionNonce;
+    private SecretKey decryptionKey;
 
     private LogSession logSession;
     private boolean supported;
@@ -194,35 +195,38 @@ public class BlinkyManager extends ObservableBleManager {
         public void onANonceReceived(@NonNull Data customANoncePacket) {
             partnerId = FruityPacket.getSenderId(customANoncePacket);
             // generate encrypt and decrypt key
-            int[] aNonce = FruityPacket.readEncryptCustomANonce(customANoncePacket);
-            Log.d("FM", "ANonceFirst: " + aNonce[0]);
-            Log.d("FM", "ANonceSecond: " + aNonce[1]);
-            byte[] plainText = FruityPacket.createPlainTextForSecretKey(FruityPacket.nodeId, aNonce);
-            encryptionKey = FruityPacket.generateSecretKey(plainText, FruityPacket.secretKey);
+            encryptionNonce = FruityPacket.readEncryptCustomANonce(customANoncePacket);
+            Log.d("FM", "ANonceFirst: " + encryptionNonce[0]);
+            Log.d("FM", "ANonceSecond: " + encryptionNonce[1]);
+            byte[] plainTextForEncryptionKey = FruityPacket.createPlainTextForSecretKey(FruityPacket.nodeId, encryptionNonce);
+            encryptionKey = new SecretKeySpec(FruityPacket.generateSecretKey(plainTextForEncryptionKey, FruityPacket.secretKey), "AES");
             int[] sNonce = new int[2];
             try {
                 SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
                 sNonce[0] = random.nextInt();
                 sNonce[1] = random.nextInt();
-                Log.d("FM", "SNonceFirst: " + sNonce[0]);
-                Log.d("FM", "SNonceSecond: " + sNonce[1]);
+                decryptionNonce = sNonce;
+                Log.d("FM", "SNonceFirst: " + decryptionNonce[0]);
+                Log.d("FM", "SNonceSecond: " + decryptionNonce[1]);
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
                 return;
             }
-            plainText = FruityPacket.createPlainTextForSecretKey(FruityPacket.nodeId, sNonce);
-            decryptionKey = FruityPacket.generateSecretKey(plainText, FruityPacket.secretKey);
+            byte[] plainTextForDecryptionKey = FruityPacket.createPlainTextForSecretKey(FruityPacket.nodeId, decryptionNonce);
+            decryptionKey = new SecretKeySpec(FruityPacket.generateSecretKey(plainTextForDecryptionKey, FruityPacket.secretKey), "AES");
             if (encryptionKey == null || decryptionKey == null) {
                 return;
             }
-            Log.d("FM", "EncryptionKey:" + Arrays.toString(encryptionKey));
-            Log.d("FM", "DecryptionKey:" + Arrays.toString(decryptionKey));
+            Log.d("FM", "EncryptionKey:" + encryptionKey.toString());
+            Log.d("FM", "DecryptionKey:" + decryptionKey.toString());
             FruityPacket.ConnPacketEncryptCustomSNonce customSNonce = new FruityPacket.ConnPacketEncryptCustomSNonce(
                     FruityPacket.MessageType.ENCRYPT_CUSTOM_SNONCE, FruityPacket.nodeId, partnerId,
-                    sNonce[0], sNonce[1]);
+                    decryptionNonce[0], decryptionNonce[1]);
             // encrypt
             byte nonEncryptPacket[] = FruityPacket.createEncryptCustomSNonce(customSNonce);
-            Data sNonceEncryptData = new Data(FruityPacket.encryptPacket(nonEncryptPacket, 13, aNonce, new SecretKeySpec(encryptionKey, "AES")));
+            Data sNonceEncryptData = new Data(FruityPacket.encryptPacket(nonEncryptPacket,
+                    FruityPacket.ConnPacketEncryptCustomSNonce.SIZEOF_CONN_PACKET_ENCRYPT_CUSTOM_SNONCE,
+                    encryptionNonce, encryptionKey));
             writeCharacteristic(maRxCharacteristic, sNonceEncryptData).with(ledCallback).enqueue();
         }
     };

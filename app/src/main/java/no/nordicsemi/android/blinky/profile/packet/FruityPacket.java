@@ -3,12 +3,15 @@ package no.nordicsemi.android.blinky.profile.packet;
 
 import android.icu.util.ChineseCalendar;
 
+import androidx.annotation.NonNull;
+
 import com.google.android.material.chip.Chip;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.sql.SQLSyntaxErrorException;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -22,6 +25,7 @@ import no.nordicsemi.android.ble.data.Data;
 public class FruityPacket {
     public static final int nodeId = 631;
     public static final int NODE_ID_VIRTUAL_BASE = 2000;
+    public static final int MESH_ACCESS_MIC_LENGTH = 4;
     public static final SecretKey secretKey = new SecretKeySpec(
             new byte[]{0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11},
             "AES"
@@ -39,24 +43,23 @@ public class FruityPacket {
         return headerBytes;
     }
 
-    public static byte[] encryptPacket(byte[] plainText, int packetRawLen, int[] aNonce, SecretKey secretKey) {
-        if (aNonce.length != 2) return null;
+    public static byte[] encryptPacket(byte[] plainPacket, int packetRawLen, int[] encryptionNonce, SecretKey secretKey) {
+        if (encryptionNonce.length != 2) return null;
 
         byte[] plainTextPadding = new byte[16];
-        System.arraycopy(plainText, 0, plainTextPadding, 0, plainText.length);
-        byte[] keyStream;
+        System.arraycopy(plainPacket, 0, plainTextPadding, 0, plainPacket.length);
         byte[] mic;
         byte[] encryptPacket;
         try {
-            byte[] aNoncePlainText = new byte[16];
-            System.arraycopy(convertIntToBytes(aNonce[0], ByteOrder.LITTLE_ENDIAN), 0, aNoncePlainText, 0, 4);
-            System.arraycopy(convertIntToBytes(aNonce[1], ByteOrder.LITTLE_ENDIAN), 0, aNoncePlainText, 4, 4);
+            byte[] encryptNonceClearTextForKeyStream = new byte[16];
+            System.arraycopy(convertIntToBytes(encryptionNonce[0], ByteOrder.LITTLE_ENDIAN), 0, encryptNonceClearTextForKeyStream, 0, 4);
+            System.arraycopy(convertIntToBytes(encryptionNonce[1], ByteOrder.LITTLE_ENDIAN), 0, encryptNonceClearTextForKeyStream, 4, 4);
             // generate key stream
             Cipher cipher = Cipher.getInstance("AES_128/ECB/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-            keyStream = cipher.doFinal(aNoncePlainText);
-            encryptPacket = xorBytes(plainTextPadding, keyStream);
-            mic = generateMIC(aNonce, secretKey, encryptPacket, packetRawLen);
+            byte[] encryptKeyStream = cipher.doFinal(encryptNonceClearTextForKeyStream);
+            encryptPacket = xorBytes(plainTextPadding, encryptKeyStream);
+            mic = generateMIC(encryptionNonce, secretKey, encryptPacket, packetRawLen);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -67,23 +70,67 @@ public class FruityPacket {
         return encryptPacketWithMic;
     }
 
-    public static byte[] generateMIC(int aNonce[], SecretKey secretKey, byte[] encryptedPacket, int packetLen) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
-        if (aNonce.length != 2 && encryptedPacket.length != 16) return null;
+    public static byte[] decryptPacket(byte[] encryptedPacket, int packetTotalLen, int[] _decryptionNonce, SecretKey secretKey) {
+        if (_decryptionNonce.length != 2) return null;
+
+        // check MIC
+        if (checkMIC(encryptedPacket, packetTotalLen, _decryptionNonce, secretKey)) {
+            return null;
+        }
+        return null;
+    }
+
+    public static byte[] generateMIC(int[] _encryptionNonce, SecretKey secretKey, byte[] encryptedPacket, int packetLen) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+        if (_encryptionNonce.length != 2 && encryptedPacket.length != 16) return null;
 
         // create aNonce plain text to generate key stream for mic
-        aNonce[1]++;
-        byte aNoncePlainText[] = new byte[16];
-        System.arraycopy(convertIntToBytes(aNonce[0], ByteOrder.LITTLE_ENDIAN), 0, aNoncePlainText, 0, 4);
-        System.arraycopy(convertIntToBytes(aNonce[1], ByteOrder.LITTLE_ENDIAN), 0, aNoncePlainText, 4, 4);
+        int[] encryptionNonce = new int[2];
+        System.arraycopy(_encryptionNonce, 0, encryptionNonce, 0, _encryptionNonce.length);
+        encryptionNonce[1]++;
+        byte[] plainTextForMicKeyStream = new byte[16];
+        System.arraycopy(convertIntToBytes(encryptionNonce[0], ByteOrder.LITTLE_ENDIAN), 0, plainTextForMicKeyStream, 0, 4);
+        System.arraycopy(convertIntToBytes(encryptionNonce[1], ByteOrder.LITTLE_ENDIAN), 0, plainTextForMicKeyStream, 4, 4);
         Cipher cipher = Cipher.getInstance("AES_128/ECB/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-        byte micKeyStream[] = cipher.doFinal(aNoncePlainText);
-        byte zeroPaddingEncryptPacket[] = new byte[16];
+        byte[] micKeyStream = cipher.doFinal(plainTextForMicKeyStream);
+        byte[] zeroPaddingEncryptPacket = new byte[16];
         System.arraycopy(encryptedPacket, 0, zeroPaddingEncryptPacket, 0, packetLen);
-        byte xoredMic[] = xorBytes(micKeyStream, zeroPaddingEncryptPacket);
-        byte mic[] = new byte[4];
-        System.arraycopy(cipher.doFinal(xoredMic), 0, mic, 0, 4);
+        byte[] xoredMic = xorBytes(micKeyStream, zeroPaddingEncryptPacket);
+        byte[] mic = new byte[MESH_ACCESS_MIC_LENGTH];
+        System.arraycopy(cipher.doFinal(xoredMic), 0, mic, 0, MESH_ACCESS_MIC_LENGTH);
         return mic;
+    }
+
+    public static boolean checkMIC(byte[] encryptedPacket, int packetTotalLen, int[] _decryptionNonce, SecretKey secretKey) {
+        if (_decryptionNonce.length != 2) return false;
+
+        // check MIC
+        int decryptionNonce[] = new int[2];
+        System.arraycopy(_decryptionNonce, 0, decryptionNonce, 0, _decryptionNonce.length);
+        ++decryptionNonce[1];
+        byte[] mic;
+        try {
+            byte[] decryptNonceClearTextForKeyStream = new byte[16];
+            System.arraycopy(convertIntToBytes(decryptionNonce[0], ByteOrder.LITTLE_ENDIAN), 0, decryptNonceClearTextForKeyStream, 0, 4);
+            System.arraycopy(convertIntToBytes(decryptionNonce[1], ByteOrder.LITTLE_ENDIAN), 0, decryptNonceClearTextForKeyStream, 4, 4);
+            Cipher cipher = Cipher.getInstance("AES_128/ECB/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            byte[] micKeyStream = cipher.doFinal(decryptNonceClearTextForKeyStream);
+            byte encryptedPacketWithoutMic[] = new byte[16];
+            System.arraycopy(encryptedPacket, 0, encryptedPacketWithoutMic, 0, packetTotalLen - MESH_ACCESS_MIC_LENGTH);
+            byte[] micTemp = xorBytes(encryptedPacketWithoutMic, micKeyStream);
+            mic = cipher.doFinal(micTemp);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        for (int ii = 0; ii < FruityPacket.MESH_ACCESS_MIC_LENGTH; ++ii) {
+            int encryptedMicIndex = packetTotalLen - FruityPacket.MESH_ACCESS_MIC_LENGTH + ii;
+            if (mic[ii] != encryptedPacket[encryptedMicIndex]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static byte[] xorBytes(byte[] src, byte[] xor) {
@@ -146,18 +193,18 @@ public class FruityPacket {
 
     /**
      * Little Endian
-     * centralNodeId[2byte] + First ANonce[4byte] + Second ANonce[4byte] + 0 Padding[6byte]
+     * centralNodeId[2byte] + First Nonce[4byte] + Second Nonce[4byte] + 0 Padding[6byte]
      *
-     * @param aNonce
+     * @param nonce
      * @return
      */
-    public static byte[] createPlainTextForSecretKey(int nodeId, int aNonce[]) {
+    public static byte[] createPlainTextForSecretKey(int nodeId, int nonce[]) {
         byte plainText[] = new byte[16];
         byte[] temp = convertIntToBytes(nodeId, ByteOrder.LITTLE_ENDIAN);
         System.arraycopy(temp, 0, plainText, 0, 2);
-        temp = convertIntToBytes(aNonce[0], ByteOrder.LITTLE_ENDIAN);
+        temp = convertIntToBytes(nonce[0], ByteOrder.LITTLE_ENDIAN);
         System.arraycopy(temp, 0, plainText, 2, 4);
-        temp = convertIntToBytes(aNonce[1], ByteOrder.LITTLE_ENDIAN);
+        temp = convertIntToBytes(nonce[1], ByteOrder.LITTLE_ENDIAN);
         System.arraycopy(temp, 0, plainText, 6, 4);
         return plainText;
     }
@@ -226,7 +273,7 @@ public class FruityPacket {
         public ConnPacketHeader header = new ConnPacketHeader();
         public int sNonce[] = new int[2];
 
-        final static int SIZEOF_CONN_PACKET_ENCRYPT_CUSTOM_SNONCE =
+        public final static int SIZEOF_CONN_PACKET_ENCRYPT_CUSTOM_SNONCE =
                 ConnPacketHeader.SIZEOF_CONN_PACKET_HEADER + 8;
     }
 
