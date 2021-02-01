@@ -39,6 +39,10 @@
 	<string name="button_unknown">Unknown</string>
 	<string name="led_summary">Toggle the switch to turn the LED 3 on or off.</string>
 	<string name="button_summary">Press Button 1 on the dev kit.</string>
+	<string name="fm_send_packet_title">Fruity Mesh Send Packet</string>
+	<string name="fm_send_summary">Fruity Mesh Send Packet Summary</string>
+	<string name="fm_send_packet_content">packet to send</string>
+	<string name="fm_send_packet_button">send</string>
 
 	<string name="location_permission_title">LOCATION PERMISSION REQUIRED</string>
 	<string name="location_permission_info">From Android 6.0 Marshmallow onwards the application requires Location permission in order to scan for Bluetooth Low Energy devices.

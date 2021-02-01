@@ -24,7 +24,9 @@ package no.nordicsemi.android.blinky;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -78,6 +80,13 @@ public class BlinkyActivity extends AppCompatActivity {
 		final View content = findViewById(R.id.device_container);
 		final View notSupported = findViewById(R.id.not_supported);
 
+		// button
+		Button button = findViewById(R.id.fm_packet_send_button);
+		button.setOnClickListener(view -> {
+			String packetToSend = ((TextView)findViewById(R.id.fm_input_text)).getText().toString();
+			Log.d("FM", "packet: " + packetToSend);
+		});
+
 		led.setOnCheckedChangeListener((buttonView, isChecked) -> viewModel.setLedState(isChecked));
 		viewModel.getConnectionState().observe(this, state -> {
 			switch (state.getState()) {
@@ -128,5 +137,8 @@ public class BlinkyActivity extends AppCompatActivity {
 			led.setChecked(false);
 			buttonState.setText(R.string.button_unknown);
 		}
+	}
+
+	public void onSendPacket(View view) {
 	}
 }

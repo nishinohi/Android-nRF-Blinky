@@ -20,182 +20,238 @@
   ~ USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:app="http://schemas.android.com/apk/res-auto"
-	xmlns:tools="http://schemas.android.com/tools"
-	android:layout_width="match_parent"
-	android:layout_height="match_parent"
-	tools:context=".BlinkyActivity"
-	tools:ignore="ContentDescription">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".BlinkyActivity"
+    tools:ignore="ContentDescription">
 
-	<com.google.android.material.appbar.AppBarLayout
-		android:id="@+id/appbar_layout"
-		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:theme="@style/AppTheme.AppBarOverlay">
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appbar_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:theme="@style/AppTheme.AppBarOverlay">
 
-		<com.google.android.material.appbar.MaterialToolbar
-			android:id="@+id/toolbar"
-			android:layout_width="match_parent"
-			android:layout_height="?attr/actionBarSize"
-			app:popupTheme="@style/AppTheme.PopupOverlay" />
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:popupTheme="@style/AppTheme.PopupOverlay" />
 
-	</com.google.android.material.appbar.AppBarLayout>
+    </com.google.android.material.appbar.AppBarLayout>
 
-	<ScrollView
-		android:id="@+id/device_container"
-		android:layout_width="match_parent"
-		android:layout_height="match_parent"
-		android:layout_below="@+id/appbar_layout"
-		android:visibility="gone"
-		tools:visibility="visible">
+    <ScrollView
+        android:id="@+id/device_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/appbar_layout"
+        android:layout_marginTop="1dp"
+        android:visibility="gone"
+        tools:visibility="visible">
 
-		<LinearLayout
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-			<com.google.android.material.card.MaterialCardView
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:layout_marginTop="@dimen/activity_horizontal_margin">
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/activity_horizontal_margin">
 
-				<androidx.constraintlayout.widget.ConstraintLayout
-					android:layout_width="match_parent"
-					android:layout_height="match_parent">
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
 
-					<com.google.android.material.appbar.MaterialToolbar
-						android:id="@+id/led_tool_bar"
-						android:layout_width="0dp"
-						android:layout_height="?actionBarSize"
-						app:layout_constraintLeft_toLeftOf="parent"
-						app:layout_constraintRight_toRightOf="parent"
-						app:layout_constraintTop_toTopOf="parent"
-						app:logo="@drawable/ic_toolbar_lightbulb"
-						app:title="@string/title_led_state"
-						app:titleMarginStart="@dimen/toolbar_title_margin" />
+                    <com.google.android.material.appbar.MaterialToolbar
+                        android:id="@+id/led_tool_bar"
+                        android:layout_width="0dp"
+                        android:layout_height="?actionBarSize"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintRight_toRightOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:logo="@drawable/ic_toolbar_lightbulb"
+                        app:title="@string/title_led_state"
+                        app:titleMarginStart="@dimen/toolbar_title_margin" />
 
-					<com.google.android.material.textview.MaterialTextView
-						android:id="@+id/led_summary"
-						android:layout_width="0dp"
-						android:layout_height="wrap_content"
-						android:paddingStart="@dimen/activity_horizontal_margin"
-						android:paddingEnd="@dimen/activity_horizontal_margin"
-						android:text="@string/led_summary"
-						android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
-						app:layout_constraintLeft_toLeftOf="parent"
-						app:layout_constraintTop_toBottomOf="@+id/led_tool_bar" />
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/led_summary"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="@dimen/activity_horizontal_margin"
+                        android:paddingEnd="@dimen/activity_horizontal_margin"
+                        android:text="@string/led_summary"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/led_tool_bar" />
 
-					<com.google.android.material.textview.MaterialTextView
-						android:id="@+id/led_state"
-						android:layout_width="0dp"
-						android:layout_height="wrap_content"
-						android:padding="@dimen/activity_horizontal_margin"
-						android:text="@string/turn_off"
-						android:textAllCaps="true"
-						android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-						app:layout_constraintLeft_toLeftOf="parent"
-						app:layout_constraintTop_toBottomOf="@+id/led_summary" />
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/led_state"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:padding="@dimen/activity_horizontal_margin"
+                        android:text="@string/turn_off"
+                        android:textAllCaps="true"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/led_summary" />
 
-					<com.google.android.material.switchmaterial.SwitchMaterial
-						android:id="@+id/led_switch"
-						android:layout_width="0dp"
-						android:layout_height="wrap_content"
-						android:padding="@dimen/activity_horizontal_margin"
-						app:layout_constraintBaseline_toBaselineOf="@+id/led_state"
-						app:layout_constraintEnd_toEndOf="parent" />
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/led_switch"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:padding="@dimen/activity_horizontal_margin"
+                        app:layout_constraintBaseline_toBaselineOf="@+id/led_state"
+                        app:layout_constraintEnd_toEndOf="parent" />
 
-				</androidx.constraintlayout.widget.ConstraintLayout>
-			</com.google.android.material.card.MaterialCardView>
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-			<com.google.android.material.card.MaterialCardView
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:layout_marginTop="@dimen/activity_horizontal_margin"
-				android:layout_marginBottom="@dimen/activity_horizontal_margin">
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/activity_horizontal_margin"
+                android:layout_marginBottom="@dimen/activity_horizontal_margin">
 
-				<androidx.constraintlayout.widget.ConstraintLayout
-					android:layout_width="match_parent"
-					android:layout_height="match_parent">
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
 
-					<com.google.android.material.appbar.MaterialToolbar
-						android:id="@+id/button_tool_bar"
-						android:layout_width="0dp"
-						android:layout_height="?actionBarSize"
-						app:layout_constraintLeft_toLeftOf="parent"
-						app:layout_constraintRight_toRightOf="parent"
-						app:layout_constraintTop_toTopOf="parent"
-						app:logo="@drawable/ic_toolbar_button"
-						app:title="@string/title_button_state"
-						app:titleMarginStart="@dimen/toolbar_title_margin" />
+                    <com.google.android.material.appbar.MaterialToolbar
+                        android:id="@+id/button_tool_bar"
+                        android:layout_width="0dp"
+                        android:layout_height="?actionBarSize"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintRight_toRightOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:logo="@drawable/ic_toolbar_button"
+                        app:title="@string/title_button_state"
+                        app:titleMarginStart="@dimen/toolbar_title_margin" />
 
-					<com.google.android.material.textview.MaterialTextView
-						android:id="@+id/button_summary"
-						android:layout_width="0dp"
-						android:layout_height="wrap_content"
-						android:paddingStart="@dimen/activity_horizontal_margin"
-						android:paddingEnd="@dimen/activity_horizontal_margin"
-						android:text="@string/button_summary"
-						android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
-						app:layout_constraintLeft_toLeftOf="parent"
-						app:layout_constraintTop_toBottomOf="@+id/button_tool_bar" />
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/button_summary"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="@dimen/activity_horizontal_margin"
+                        android:paddingEnd="@dimen/activity_horizontal_margin"
+                        android:text="@string/button_summary"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/button_tool_bar" />
 
-					<com.google.android.material.textview.MaterialTextView
-						android:id="@+id/textView"
-						android:layout_width="0dp"
-						android:layout_height="wrap_content"
-						android:padding="@dimen/activity_horizontal_margin"
-						android:text="@string/state"
-						android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-						app:layout_constraintLeft_toLeftOf="parent"
-						app:layout_constraintTop_toBottomOf="@+id/button_summary" />
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/textView"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:padding="@dimen/activity_horizontal_margin"
+                        android:text="@string/state"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/button_summary" />
 
-					<com.google.android.material.textview.MaterialTextView
-						android:id="@+id/button_state"
-						android:layout_width="0dp"
-						android:layout_height="wrap_content"
-						android:padding="@dimen/activity_horizontal_margin"
-						android:text="@string/button_unknown"
-						android:textAllCaps="true"
-						android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-						app:layout_constraintBaseline_toBaselineOf="@+id/textView"
-						app:layout_constraintRight_toRightOf="parent" />
-				</androidx.constraintlayout.widget.ConstraintLayout>
-			</com.google.android.material.card.MaterialCardView>
-		</LinearLayout>
-	</ScrollView>
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/button_state"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:padding="@dimen/activity_horizontal_margin"
+                        android:text="@string/button_unknown"
+                        android:textAllCaps="true"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+                        app:layout_constraintBaseline_toBaselineOf="@+id/textView"
+                        app:layout_constraintRight_toRightOf="parent" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-	<LinearLayout
-		android:id="@+id/progress_container"
-		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:layout_centerInParent="true"
-		android:gravity="center_horizontal"
-		android:orientation="vertical"
-		android:padding="@dimen/activity_horizontal_margin"
-		android:visibility="gone"
-		tools:visibility="gone">
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/activity_horizontal_margin"
+                android:layout_marginBottom="@dimen/activity_horizontal_margin">
 
-		<com.google.android.material.textview.MaterialTextView
-			android:id="@+id/connection_state"
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:gravity="center_horizontal"
-			android:textSize="16sp"
-			tools:text="@string/state_connecting" />
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
 
-		<ProgressBar
-			style="?android:attr/progressBarStyleHorizontal"
-			android:layout_width="250dp"
-			android:layout_height="wrap_content"
-			android:indeterminate="true" />
-	</LinearLayout>
+                    <com.google.android.material.appbar.MaterialToolbar
+                        android:id="@+id/fm_send_packet"
+                        android:layout_width="0dp"
+                        android:layout_height="?actionBarSize"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintRight_toRightOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:logo="@drawable/ic_toolbar_button"
+                        app:title="@string/fm_send_packet_title"
+                        app:titleMarginStart="@dimen/toolbar_title_margin" />
 
-	<include
-		android:id="@+id/not_supported"
-		layout="@layout/info_not_supported"
-		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:layout_centerInParent="true"
-		android:visibility="gone"
-		tools:visibility="gone" />
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/fm_send_packet_summary"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="@dimen/activity_horizontal_margin"
+                        android:paddingEnd="@dimen/activity_horizontal_margin"
+                        android:text="@string/fm_send_summary"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/fm_send_packet" />
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/fm_input_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/fm_send_packet_content"
+                        android:padding="@dimen/activity_horizontal_margin"
+                        app:layout_constraintEnd_toStartOf="@+id/fm_packet_send_button"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/fm_send_packet_summary" />
+
+                    <Button
+                        android:id="@+id/fm_packet_send_button"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/fm_send_packet_button"
+                        app:layout_constraintBaseline_toBaselineOf="@+id/fm_input_text"
+                        app:layout_constraintRight_toRightOf="parent" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </ScrollView>
+
+    <LinearLayout
+        android:id="@+id/progress_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="@dimen/activity_horizontal_margin"
+        android:visibility="gone"
+        tools:visibility="gone">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/connection_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:textSize="16sp"
+            tools:text="@string/state_connecting" />
+
+        <ProgressBar
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="250dp"
+            android:layout_height="wrap_content"
+            android:indeterminate="true" />
+    </LinearLayout>
+
+    <include
+        android:id="@+id/not_supported"
+        layout="@layout/info_not_supported"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:visibility="gone"
+        tools:visibility="gone" />
 </RelativeLayout>
