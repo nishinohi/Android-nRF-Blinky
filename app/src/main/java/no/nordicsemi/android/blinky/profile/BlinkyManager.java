@@ -245,13 +245,13 @@ public class BlinkyManager extends ObservableBleManager {
             }
             Log.d("FM", "onDataReceived: " + decryptPacket);
             // increment
-            ++decryptionNonce[1];
+            decryptionNonce[1] += 2;
             parsePacket(new Data(decryptPacket));
         }
 
         @Override
         public void onDataSent(@NonNull BluetoothDevice device, @NonNull Data data) {
-            if (encryptionState == FruityPacket.EncryptionState.ENCRYPTED) ++encryptionNonce[1];
+            if (encryptionState == FruityPacket.EncryptionState.ENCRYPTED) encryptionNonce[1] += 2;
         }
     };
 
@@ -314,6 +314,9 @@ public class BlinkyManager extends ObservableBleManager {
         protected void onDeviceDisconnected() {
             buttonCharacteristic = null;
             ledCharacteristic = null;
+            encryptionState = FruityPacket.EncryptionState.NOT_ENCRYPTED;
+            maTxCharacteristic = null;
+            maRxCharacteristic = null;
         }
     }
 

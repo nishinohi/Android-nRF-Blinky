@@ -41,6 +41,7 @@ public class FruityPacket {
     public static byte[] encryptPacketWithMIC(byte[] plainPacket, int packetLen, int[] encryptionNonce, SecretKey sessionEncryptionKey) {
         if (encryptionNonce.length != 2) return null;
 
+        Log.d("FM", "Encrypting: " + plainPacket + "(" + packetLen + ")" + " with nonce: " + encryptionNonce[1]);
         byte[] packetZeroPadding = new byte[16];
         System.arraycopy(plainPacket, 0, packetZeroPadding, 0, plainPacket.length);
         byte[] mic;
@@ -62,6 +63,7 @@ public class FruityPacket {
         byte[] encryptPacketWithMic = new byte[packetLen + FruityPacket.MESH_ACCESS_MIC_LENGTH];
         System.arraycopy(encryptPacket, 0, encryptPacketWithMic, 0, packetLen);
         System.arraycopy(mic, 0, encryptPacketWithMic, packetLen, mic.length);
+        Log.d("FM", "Encrypted with MIC: " + encryptPacketWithMic + "(" + encryptPacketWithMic.length + ")" + " with nonce: " + encryptionNonce[1]);
         return encryptPacketWithMic;
     }
 
@@ -74,6 +76,7 @@ public class FruityPacket {
             Log.d("FM", "MIC is invalid");
             return null;
         }
+        Log.d("FM", "Decrypting: " + encryptPacket + "(" + packetLen + ")" + " with nonce: " + decryptionNonce[1]);
         byte[] decryptNonceClearTextForKeyStream = new byte[16];
         System.arraycopy(convertIntToBytes(decryptionNonce[0], ByteOrder.LITTLE_ENDIAN), 0, decryptNonceClearTextForKeyStream, 0, 4);
         System.arraycopy(convertIntToBytes(decryptionNonce[1], ByteOrder.LITTLE_ENDIAN), 0, decryptNonceClearTextForKeyStream, 4, 4);
@@ -86,11 +89,8 @@ public class FruityPacket {
             e.printStackTrace();
             return null;
         }
-        byte[] decryptPacket = xorBytes(encryptPacket, 0, decryptKeyStream, 0, decryptKeyStream.length);
-        int zeroPaddingLen = decryptPacket.length - packetRawLen;
-        for (int ii = 0; ii < zeroPaddingLen; ++ii) {
-            decryptPacket[(decryptPacket.length - 1) - ii] = 0;
-        }
+        byte[] decryptPacket = xorBytes(encryptPacket, 0, decryptKeyStream, 0, packetRawLen);
+        Log.d("FM", "Decrypted: " + decryptPacket + "(" + packetLen + ")" + " with nonce: " + decryptionNonce[1]);
         return decryptPacket;
     }
 
