@@ -18,7 +18,7 @@ public abstract class FruityEncryptDataCallback implements ProfileDataCallback, 
     public void parsePacket(Data packetData) {
         byte packet[] = packetData.getValue();
         final int a = FruityPacket.MessageType.ENCRYPT_CUSTOM_ANONCE.getTypeValue();
-        FruityPacket.MessageType messageType = FruityPacket.MessageType.getTypeEnum((int)packet[0]);
+        FruityPacket.MessageType messageType = FruityPacket.MessageType.getTypeEnum(packet[0]);
         switch (messageType) {
             case ENCRYPT_CUSTOM_ANONCE:
                 onANonceReceived(packetData);

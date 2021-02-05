@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -21,15 +22,16 @@ public class FruityPacket {
     public static final int nodeId = 631;
     public static final int NODE_ID_VIRTUAL_BASE = 2000;
     public static final int MESH_ACCESS_MIC_LENGTH = 4;
+    public static final int FRUITY_MTU = 20;
     public static final SecretKey secretKey = new SecretKeySpec(
             new byte[]{0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11},
             "AES"
     );
 
     private static byte[] createConnHeaderBytes(ConnPacketHeader header) {
-        byte headerBytes[] = new byte[ConnPacketHeader.SIZEOF_CONN_PACKET_HEADER];
+        byte[] headerBytes = new byte[ConnPacketHeader.SIZEOF_CONN_PACKET_HEADER];
         int offset = 0;
-        headerBytes[offset++] = (byte) header.messageType.getTypeValue();
+        headerBytes[offset++] = header.messageType.getTypeValue();
         byte[] temp = convertIntToBytes(header.sender, ByteOrder.LITTLE_ENDIAN);
         System.arraycopy(temp, 0, headerBytes, offset, 2);
         offset += 2;
@@ -41,7 +43,7 @@ public class FruityPacket {
     public static byte[] encryptPacketWithMIC(byte[] plainPacket, int packetLen, int[] encryptionNonce, SecretKey sessionEncryptionKey) {
         if (encryptionNonce.length != 2) return null;
 
-        Log.d("FM", "Encrypting: " + plainPacket + "(" + packetLen + ")" + " with nonce: " + encryptionNonce[1]);
+        Log.d("FM", "Encrypting: " + Arrays.toString(plainPacket) + "(" + packetLen + ")" + " with nonce: " + encryptionNonce[1]);
         byte[] packetZeroPadding = new byte[16];
         System.arraycopy(plainPacket, 0, packetZeroPadding, 0, plainPacket.length);
         byte[] mic;
@@ -63,7 +65,7 @@ public class FruityPacket {
         byte[] encryptPacketWithMic = new byte[packetLen + FruityPacket.MESH_ACCESS_MIC_LENGTH];
         System.arraycopy(encryptPacket, 0, encryptPacketWithMic, 0, packetLen);
         System.arraycopy(mic, 0, encryptPacketWithMic, packetLen, mic.length);
-        Log.d("FM", "Encrypted with MIC: " + encryptPacketWithMic + "(" + encryptPacketWithMic.length + ")" + " with nonce: " + encryptionNonce[1]);
+        Log.d("FM", "Encrypted with MIC: " + Arrays.toString(encryptPacketWithMic) + "(" + encryptPacketWithMic.length + ")" + " with nonce: " + encryptionNonce[1]);
         return encryptPacketWithMic;
     }
 
@@ -72,7 +74,7 @@ public class FruityPacket {
 
         int packetRawLen = packetLen - FruityPacket.MESH_ACCESS_MIC_LENGTH;
         // check MIC
-        if (checkMICValidation(encryptPacket, decryptionNonce, sessionDecryptionKey) == false) {
+        if (!checkMICValidation(encryptPacket, decryptionNonce, sessionDecryptionKey)) {
             Log.d("FM", "MIC is invalid");
             return null;
         }
@@ -249,6 +251,14 @@ public class FruityPacket {
         public static final int SIZEOF_CONN_PACKET_HEADER = 5;
     }
 
+    public static class PacketSplitHeader {
+        public MessageType splitMessageType;
+        public int splitCounter;
+
+        public static int SIZEOF_CONN_PACKET_SPLIT_HEADER = 2;
+    }
+
+
     public static final class ConnPacketEncryptCustomStart {
         public ConnPacketEncryptCustomStart(MessageType messageType, int sender, int receiver, int version, FmKeyId fmKeyId, int tunnelType, int reserved) {
             this.header.messageType = messageType;
@@ -288,54 +298,54 @@ public class FruityPacket {
     }
 
     public enum MessageType {
-        INVALID(0),
-        SPLIT_WRITE_CMD(16), //Used if a WRITE_CMD message is split
-        SPLIT_WRITE_CMD_END(17), //Used if a WRITE_CMD message is split
-        CLUSTER_WELCOME(20), //The initial message after a connection setup (Sent between two nodes)
-        CLUSTER_ACK_1(21), //Both sides must acknowledge the handshake (Sent between two nodes)
-        CLUSTER_ACK_2(22), //Second ack (Sent between two nodes)
-        CLUSTER_INFO_UPDATE(23), //When the cluster size changes), this message is used (Sent to all nodes)
-        RECONNECT(24), //Sent while trying to reestablish a connection
-        ENCRYPT_CUSTOM_START(25),
-        ENCRYPT_CUSTOM_ANONCE(26),
-        ENCRYPT_CUSTOM_SNONCE(27),
-        ENCRYPT_CUSTOM_DONE(28),
-        UPDATE_TIMESTAMP(30), //Used to enable timestamp distribution over the mesh
-        UPDATE_CONNECTION_INTERVAL(31), //Instructs a node to use a different connection interval
-        ASSET_LEGACY(32),
-        CAPABILITY(33),
-        ASSET_GENERIC(34),
-        SIG_MESH_SIMPLE(35), //A lightweight wrapper for SIG mesh access layer messages
-        MODULE_MESSAGES_START(50),
-        MODULE_CONFIG(50), //Used for many different messages that set and get the module config
-        MODULE_TRIGGER_ACTION(51), //Trigger some custom module action
-        MODULE_ACTION_RESPONSE(52), //Response on a triggered action
-        MODULE_GENERAL(53), //A message), generated by the module not as a response to an action), e.g. an event
-        MODULE_RAW_DATA(54),
-        MODULE_RAW_DATA_LIGHT(55),
-        COMPONENT_ACT(58), //Actuator messages
-        COMPONENT_SENSE(59), //Sensor messages
-        MODULE_MESSAGES_END(59),
-        TIME_SYNC(60),
-        DEAD_DATA(61), //Used by the MeshAccessConnection when malformed data was received.
-        DATA_1(80),
-        DATA_1_VITAL(81),
-        CLC_DATA(83),
-        RESERVED_BIT_START(128),
-        RESERVED_BIT_END(255),
+        INVALID((byte)0),
+        SPLIT_WRITE_CMD((byte)16), //Used if a WRITE_CMD message is split
+        SPLIT_WRITE_CMD_END((byte)17), //Used if a WRITE_CMD message is split
+        CLUSTER_WELCOME((byte)20), //The initial message after a connection setup ((byte)Sent between two nodes)
+        CLUSTER_ACK_1((byte)21), //Both sides must acknowledge the handshake ((byte)Sent between two nodes)
+        CLUSTER_ACK_2((byte)22), //Second ack ((byte)Sent between two nodes)
+        CLUSTER_INFO_UPDATE((byte)23), //When the cluster size changes), this message is used ((byte)Sent to all nodes)
+        RECONNECT((byte)24), //Sent while trying to reestablish a connection
+        ENCRYPT_CUSTOM_START((byte)25),
+        ENCRYPT_CUSTOM_ANONCE((byte)26),
+        ENCRYPT_CUSTOM_SNONCE((byte)27),
+        ENCRYPT_CUSTOM_DONE((byte)28),
+        UPDATE_TIMESTAMP((byte)30), //Used to enable timestamp distribution over the mesh
+        UPDATE_CONNECTION_INTERVAL((byte)31), //Instructs a node to use a different connection interval
+        ASSET_LEGACY((byte)32),
+        CAPABILITY((byte)33),
+        ASSET_GENERIC((byte)34),
+        SIG_MESH_SIMPLE((byte)35), //A lightweight wrapper for SIG mesh access layer messages
+        MODULE_MESSAGES_START((byte)50),
+        MODULE_CONFIG((byte)50), //Used for many different messages that set and get the module config
+        MODULE_TRIGGER_ACTION((byte)51), //Trigger some custom module action
+        MODULE_ACTION_RESPONSE((byte)52), //Response on a triggered action
+        MODULE_GENERAL((byte)53), //A message), generated by the module not as a response to an action), e.g. an event
+        MODULE_RAW_DATA((byte)54),
+        MODULE_RAW_DATA_LIGHT((byte)55),
+        COMPONENT_ACT((byte)58), //Actuator messages
+        COMPONENT_SENSE((byte)59), //Sensor messages
+        MODULE_MESSAGES_END((byte)59),
+        TIME_SYNC((byte)60),
+        DEAD_DATA((byte)61), //Used by the MeshAccessConnection when malformed data was received.
+        DATA_1((byte)80),
+        DATA_1_VITAL((byte)81),
+        CLC_DATA((byte)83),
+        RESERVED_BIT_START((byte)128),
+        RESERVED_BIT_END((byte)255),
         ;
 
-        private final int type;
+        private final byte type;
 
-        private MessageType(int type) {
+        private MessageType(byte type) {
             this.type = type;
         }
 
-        public int getTypeValue() {
+        public byte getTypeValue() {
             return type;
         }
 
-        public static MessageType getTypeEnum(int typeValue) {
+        public static MessageType getTypeEnum(byte typeValue) {
             MessageType types[] = MessageType.values();
             for (MessageType type : types) {
                 if (type.getTypeValue() == typeValue) {
