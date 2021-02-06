@@ -22,12 +22,9 @@ public class FruityDataSplitter implements DataSplitter {
         }
     }
 
-    public void setEncryptionKey(SecretKey encryptionKey) {
-        this.encryptionKey = encryptionKey;
-    }
-
-    public void setEncryptionNonce(int[] encryptionNonce) {
-        this.encryptionNonce = encryptionNonce;
+    // true : encrypted
+    public boolean isEncrypted() {
+        return this.encryptionNonce != null && this.encryptionKey != null;
     }
 
     @Nullable
@@ -35,22 +32,26 @@ public class FruityDataSplitter implements DataSplitter {
     public byte[] chunk(@NonNull byte[] message, int index, int maxLength) {
         // If packet size is lower than maxLength, you don't have to add split header
         if (index == 0 && FruityPacket.FRUITY_MTU >= message.length + FruityPacket.MESH_ACCESS_MIC_LENGTH) {
-            return FruityPacket.encryptPacketWithMIC(message, message.length, encryptionNonce, encryptionKey);
+            return isEncrypted() ?
+                    FruityPacket.encryptPacketWithMIC(message, message.length, encryptionNonce, encryptionKey) :
+                    message;
         }
 
-        int maxPayloadSize = FruityPacket.FRUITY_MTU - FruityPacket.MESH_ACCESS_MIC_LENGTH - FruityPacket.PacketSplitHeader.SIZEOF_CONN_PACKET_SPLIT_HEADER;
+        int maxPayloadSize = isEncrypted() ?
+                FruityPacket.FRUITY_MTU - FruityPacket.MESH_ACCESS_MIC_LENGTH - FruityPacket.PacketSplitHeader.SIZEOF_CONN_PACKET_SPLIT_HEADER :
+                FruityPacket.FRUITY_MTU - FruityPacket.PacketSplitHeader.SIZEOF_CONN_PACKET_SPLIT_HEADER;
         final int offset = index * maxPayloadSize;
         final int payloadSize = Math.min(maxPayloadSize, message.length - offset);
         if (payloadSize <= 0) return null;
-        final int totalPayloadSize = payloadSize + FruityPacket.MESH_ACCESS_MIC_LENGTH + FruityPacket.PacketSplitHeader.SIZEOF_CONN_PACKET_SPLIT_HEADER;
         final int payloadSizeWithSplitHeader = payloadSize + FruityPacket.PacketSplitHeader.SIZEOF_CONN_PACKET_SPLIT_HEADER;
 
-        final byte[] nonEncryptData = new byte[payloadSizeWithSplitHeader];
+        final byte[] nonEncryptedData = new byte[payloadSizeWithSplitHeader];
         // MessageType changes when you send last packet
-        nonEncryptData[0] = maxPayloadSize >= message.length - offset ?
+        nonEncryptedData[0] = maxPayloadSize >= message.length - offset ?
                 FruityPacket.MessageType.SPLIT_WRITE_CMD_END.getTypeValue() : FruityPacket.MessageType.SPLIT_WRITE_CMD.getTypeValue();
-        nonEncryptData[1] = (byte) index;
-        System.arraycopy(message, offset, nonEncryptData, FruityPacket.PacketSplitHeader.SIZEOF_CONN_PACKET_SPLIT_HEADER, payloadSize);
-        return FruityPacket.encryptPacketWithMIC(nonEncryptData, nonEncryptData.length, encryptionNonce, encryptionKey);
+        nonEncryptedData[1] = (byte) index;
+        System.arraycopy(message, offset, nonEncryptedData, FruityPacket.PacketSplitHeader.SIZEOF_CONN_PACKET_SPLIT_HEADER, payloadSize);
+        return isEncrypted() ? FruityPacket.encryptPacketWithMIC(nonEncryptedData, nonEncryptedData.length, encryptionNonce, encryptionKey) :
+                nonEncryptedData;
     }
 }

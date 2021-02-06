@@ -132,7 +132,7 @@ public class PacketConvertTest {
 
     // if data lower than max length, you don't add split header
     @Test
-    public void chunk_Non_Split_Test() {
+    public void chunk_Encrypt_Non_Split_Test() {
         // first, (byte)0x 0x4EFA4C1D
         // second, (byte)0x 0x2A681932
         int aNonce[] = new int[]{1325026333, 711465266};
@@ -146,19 +146,15 @@ public class PacketConvertTest {
     }
 
     @Test
-    public void chunk_Split_Test() {
+    public void chunk_Encrypt_Split_Test() {
         // first, (byte)0x 0x4EFA4C1D
         // second, (byte)0x 0x2A681932
         int aNonce[] = new int[]{1325026333, 711465266};
         SecretKey sessionKey = new SecretKeySpec(new byte[]{0x03, 0x1C, (byte) 0xBD, (byte) 0xBA, 0x73, 0x42, (byte) 0xFD, (byte) 0xB0, (byte) 0x95, 0x13, (byte) 0x81, (byte) 0xAB, (byte) 0x97, (byte) 0x94, (byte) 0x8C, (byte) 0xD9}, "AES");
-        FruityPacket.ConnPacketEncryptCustomSNonce sNonce = new FruityPacket.ConnPacketEncryptCustomSNonce(
-                FruityPacket.MessageType.ENCRYPT_CUSTOM_SNONCE, 1, 2, 1689834492, 434638765);
         byte[] plainText = new byte[]{0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
                 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
                 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01};
         FruityDataSplitter splitter = new FruityDataSplitter(aNonce, sessionKey);
-        byte[] expect = new byte[]{0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-                0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01};
         int index = 0;
         byte[] target = new byte[0];
         byte[] splitData = new byte[0];
@@ -173,7 +169,7 @@ public class PacketConvertTest {
     }
 
     @Test
-    public void chunk_first() {
+    public void chunk_Encrypt_First_Test() {
         // first, (byte)0x 0x4EFA4C1D
         // second, (byte)0x 0x2A681932
         int aNonce[] = new int[]{1325026333, 711465266};
@@ -185,7 +181,7 @@ public class PacketConvertTest {
     }
 
     @Test
-    public void chunk_last() {
+    public void chunk_Encrypt_Last_Test() {
         // first, (byte)0x 0x4EFA4C1D
         // second, (byte)0x 0x2A681932
         int aNonce[] = new int[]{1325026333, 711465266};
@@ -193,6 +189,62 @@ public class PacketConvertTest {
         byte[] plainText = new byte[]{0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05};
         byte[] expect = new byte[]{(byte) 0x73, (byte) 0x65, (byte) 0xA0, (byte) 0xB5, (byte) 0xA4, (byte) 0x58, (byte) 0x8F, (byte) 0x34, (byte) 0x68, (byte) 0x47, (byte) 0x7B, (byte) 0x01, (byte) 0xC0, (byte) 0x1C, (byte) 0xFB, (byte) 0x4B, (byte) 0x12};
         FruityDataSplitter splitter = new FruityDataSplitter(aNonce, sessionKey);
+        int index = 0;
+        byte[] target = new byte[0];
+        byte[] splitData = new byte[0];
+        while (splitData != null) {
+            splitData = splitter.chunk(plainText, index++, 23);
+            if (splitData != null) {
+                target = new byte[splitData.length];
+                System.arraycopy(splitData, 0, target, 0, splitData.length);
+            }
+        }
+        assertThat("Split chunk last", target, is(expect));
+    }
+
+    // if data lower than max length, you don't add split header
+    @Test
+    public void chunk_Non_Encrypt_Non_Split_Test() {
+        FruityPacket.ConnPacketEncryptCustomSNonce sNonce = new FruityPacket.ConnPacketEncryptCustomSNonce(
+                FruityPacket.MessageType.ENCRYPT_CUSTOM_SNONCE, 1, 2, 1689834492, 434638765);
+        byte[] plainText = FruityPacket.createEncryptCustomSNonce(sNonce);
+        FruityDataSplitter splitter = new FruityDataSplitter(null, null);
+        byte[] expect = new byte[]{(byte) 0x1B, (byte) 0x01, (byte) 0x00, (byte) 0x02, (byte) 0x00, (byte) 0xFC, (byte) 0xD3, (byte) 0xB8, (byte) 0x64, (byte) 0xAD, (byte) 0x0F, (byte) 0xE8, (byte) 0x19};
+        assertThat("Non Split", splitter.chunk(plainText, 0, 20), is(expect));
+    }
+
+    @Test
+    public void chunk_Non_Encrypt_Split_Test() {
+        byte[] plainText = new byte[]{0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+                0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+                0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01};
+        FruityDataSplitter splitter = new FruityDataSplitter(null, null);
+        int index = 0;
+        byte[] target = new byte[0];
+        byte[] splitData = new byte[0];
+        while (splitData != null) {
+            splitData = splitter.chunk(plainText, index++, 20);
+            if (splitData != null) {
+                target = new byte[splitData.length];
+                System.arraycopy(splitData, 0, target, 0, splitData.length);
+            }
+        }
+        assertThat("split length", target.length, is(14));
+    }
+
+    @Test
+    public void chunk_Non_Encrypt_First_Test() {
+        byte[] plainText = new byte[]{0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05};
+        FruityDataSplitter splitter = new FruityDataSplitter(null, null);
+        byte[] expect = new byte[]{0x10, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03};
+        assertThat("Split chunk first", splitter.chunk(plainText, 0, 20), is(expect));
+    }
+
+    @Test
+    public void chunk_Non_Encrypt_Last_Test() {
+        byte[] plainText = new byte[]{0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05};
+        byte[] expect = new byte[]{0x11, 0x01, 0x04, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05};
+        FruityDataSplitter splitter = new FruityDataSplitter(null, null);
         int index = 0;
         byte[] target = new byte[0];
         byte[] splitData = new byte[0];
