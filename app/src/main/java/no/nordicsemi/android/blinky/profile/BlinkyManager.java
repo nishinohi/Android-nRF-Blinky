@@ -47,6 +47,7 @@ import no.nordicsemi.android.blinky.profile.callback.BlinkyButtonDataCallback;
 import no.nordicsemi.android.blinky.profile.callback.BlinkyLedDataCallback;
 import no.nordicsemi.android.blinky.profile.callback.FruityEncryptDataCallback;
 import no.nordicsemi.android.blinky.profile.data.BlinkyLED;
+import no.nordicsemi.android.blinky.profile.packet.FruityDataSplitter;
 import no.nordicsemi.android.blinky.profile.packet.FruityPacket;
 import no.nordicsemi.android.log.LogContract;
 import no.nordicsemi.android.log.LogSession;
@@ -91,7 +92,7 @@ public class BlinkyManager extends ObservableBleManager {
     //    private int virtualPartnerId;
     private int[] encryptionNonce;
     private SecretKey encryptionKey;
-    private int[] decryptionNonce;
+    private final int[] decryptionNonce = new int[2];
     private SecretKey decryptionKey;
     private FruityPacket.EncryptionState encryptionState = FruityPacket.EncryptionState.NOT_ENCRYPTED;
 
@@ -199,12 +200,10 @@ public class BlinkyManager extends ObservableBleManager {
             Log.d("FM", "ANonceSecond: " + encryptionNonce[1]);
             byte[] plainTextForEncryptionKey = FruityPacket.createPlainTextForSecretKey(FruityPacket.nodeId, encryptionNonce);
             encryptionKey = new SecretKeySpec(FruityPacket.generateSecretKey(plainTextForEncryptionKey, FruityPacket.secretKey), "AES");
-            int[] sNonce = new int[2];
             try {
                 SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
-                sNonce[0] = random.nextInt();
-                sNonce[1] = random.nextInt();
-                decryptionNonce = sNonce;
+                decryptionNonce[0] = random.nextInt();
+                decryptionNonce[1] = random.nextInt();
                 Log.d("FM", "SNonceFirst: " + decryptionNonce[0]);
                 Log.d("FM", "SNonceSecond: " + decryptionNonce[1]);
             } catch (NoSuchAlgorithmException e) {
@@ -222,12 +221,8 @@ public class BlinkyManager extends ObservableBleManager {
             FruityPacket.ConnPacketEncryptCustomSNonce customSNonce = new FruityPacket.ConnPacketEncryptCustomSNonce(
                     FruityPacket.MessageType.ENCRYPT_CUSTOM_SNONCE, FruityPacket.nodeId, partnerId,
                     decryptionNonce[0], decryptionNonce[1]);
-            // encrypt
-            byte nonEncryptPacket[] = FruityPacket.createEncryptCustomSNonce(customSNonce);
-            Data sNonceEncryptData = new Data(FruityPacket.encryptPacketWithMIC(nonEncryptPacket,
-                    FruityPacket.ConnPacketEncryptCustomSNonce.SIZEOF_CONN_PACKET_ENCRYPT_CUSTOM_SNONCE,
-                    encryptionNonce, encryptionKey));
-            writeCharacteristic(maRxCharacteristic, sNonceEncryptData).with(ledCallback).enqueue();
+            writeCharacteristic(maRxCharacteristic, new Data(FruityPacket.createEncryptCustomSNonce(customSNonce)))
+                    .split(new FruityDataSplitter(encryptionNonce, encryptionKey)).with(ledCallback).enqueue();
         }
 
         @Override
@@ -277,8 +272,8 @@ public class BlinkyManager extends ObservableBleManager {
             FruityPacket.ConnPacketEncryptCustomStart encryptCustomStartPacket = new FruityPacket.ConnPacketEncryptCustomStart(
                     FruityPacket.MessageType.ENCRYPT_CUSTOM_START, FruityPacket.nodeId, 0, 1,
                     FruityPacket.FmKeyId.NODE, 0, 0);
-            Data encryptCustomStart = new Data(FruityPacket.createEncryptCustomStartPacket(encryptCustomStartPacket));
-            writeCharacteristic(maRxCharacteristic, encryptCustomStart).with(ledCallback).enqueue();
+            writeCharacteristic(maRxCharacteristic, new Data(FruityPacket.createEncryptCustomStartPacket(encryptCustomStartPacket))).
+                    split(new FruityDataSplitter(null, null)).with(fruityEncryptDataCallback).enqueue();
         }
 
         @Override
