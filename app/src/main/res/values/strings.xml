@@ -43,6 +43,8 @@
 	<string name="fm_send_summary">Fruity Mesh Send Packet Summary</string>
 	<string name="fm_send_packet_content">packet to send</string>
 	<string name="fm_send_packet_button">send</string>
+	<string name="fm_send_serial_index">serial Index</string>
+	<string name="fm_send_new_node_id">new node ID</string>
 
 	<string name="location_permission_title">LOCATION PERMISSION REQUIRED</string>
 	<string name="location_permission_info">From Android 6.0 Marshmallow onwards the application requires Location permission in order to scan for Bluetooth Low Energy devices.

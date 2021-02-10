@@ -10,12 +10,12 @@ import javax.crypto.SecretKey;
 import no.nordicsemi.android.ble.data.DataSplitter;
 
 public class FruityDataSplitter implements DataSplitter {
-    private int[] encryptionNonce;
-    private SecretKey encryptionKey;
+    private int[] encryptionNonce = null;
+    private SecretKey encryptionKey = null;
 
     public FruityDataSplitter(int[] encryptionNonce, SecretKey encryptionKey) {
         if (encryptionNonce != null) {
-            this.encryptionNonce = new int[]{encryptionNonce[0], encryptionNonce[1]};
+            this.encryptionNonce = encryptionNonce;
         }
         if (encryptionKey != null) {
             this.encryptionKey = encryptionKey;
@@ -32,9 +32,10 @@ public class FruityDataSplitter implements DataSplitter {
     public byte[] chunk(@NonNull byte[] message, int index, int maxLength) {
         // If packet size is lower than maxLength, you don't have to add split header
         if (index == 0 && FruityPacket.FRUITY_MTU >= message.length + FruityPacket.MESH_ACCESS_MIC_LENGTH) {
-            return isEncrypted() ?
-                    FruityPacket.encryptPacketWithMIC(message, message.length, encryptionNonce, encryptionKey) :
-                    message;
+            if (!isEncrypted()) return message;
+            byte[] encryptedPacket = FruityPacket.encryptPacketWithMIC(message, message.length, encryptionNonce, encryptionKey);
+            encryptionNonce[1] += 2;
+            return encryptedPacket;
         }
 
         int maxPayloadSize = isEncrypted() ?
@@ -51,7 +52,9 @@ public class FruityDataSplitter implements DataSplitter {
                 FruityPacket.MessageType.SPLIT_WRITE_CMD_END.getTypeValue() : FruityPacket.MessageType.SPLIT_WRITE_CMD.getTypeValue();
         nonEncryptedData[1] = (byte) index;
         System.arraycopy(message, offset, nonEncryptedData, FruityPacket.PacketSplitHeader.SIZEOF_CONN_PACKET_SPLIT_HEADER, payloadSize);
-        return isEncrypted() ? FruityPacket.encryptPacketWithMIC(nonEncryptedData, nonEncryptedData.length, encryptionNonce, encryptionKey) :
-                nonEncryptedData;
+        if (!isEncrypted()) return nonEncryptedData;
+        byte[] encryptedPacket = FruityPacket.encryptPacketWithMIC(nonEncryptedData, nonEncryptedData.length, encryptionNonce, encryptionKey);
+        encryptionNonce[1] += 2; // increment
+        return encryptedPacket;
     }
 }

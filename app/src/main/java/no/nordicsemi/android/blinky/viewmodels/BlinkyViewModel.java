@@ -29,6 +29,9 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import no.nordicsemi.android.ble.livedata.state.ConnectionState;
 import no.nordicsemi.android.blinky.adapter.DiscoveredBluetoothDevice;
 import no.nordicsemi.android.blinky.profile.BlinkyManager;
@@ -110,6 +113,19 @@ public class BlinkyViewModel extends AndroidViewModel {
 		super.onCleared();
 		if (blinkyManager.isConnected()) {
 			disconnect();
+		}
+	}
+
+	/**
+	 * send fruity packet by cmd content
+	 *
+	 * @param param
+	 */
+	public void sendFruityCmdPacket(Map<String, String> param) {
+		try {
+			blinkyManager.sendFruityPacketByCmdContent(param);
+		} catch (Exception e) {
+			return;
 		}
 	}
 }

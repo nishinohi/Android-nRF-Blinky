@@ -36,6 +36,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Map;
 import java.util.UUID;
 
 import javax.crypto.SecretKey;
@@ -47,6 +48,8 @@ import no.nordicsemi.android.blinky.profile.callback.BlinkyButtonDataCallback;
 import no.nordicsemi.android.blinky.profile.callback.BlinkyLedDataCallback;
 import no.nordicsemi.android.blinky.profile.callback.FruityEncryptDataCallback;
 import no.nordicsemi.android.blinky.profile.data.BlinkyLED;
+import no.nordicsemi.android.blinky.profile.module.EnrollmentModule;
+import no.nordicsemi.android.blinky.profile.module.StatusReporterModule;
 import no.nordicsemi.android.blinky.profile.packet.FruityDataSplitter;
 import no.nordicsemi.android.blinky.profile.packet.FruityPacket;
 import no.nordicsemi.android.log.LogContract;
@@ -222,7 +225,7 @@ public class BlinkyManager extends ObservableBleManager {
                     FruityPacket.MessageType.ENCRYPT_CUSTOM_SNONCE, FruityPacket.nodeId, partnerId,
                     decryptionNonce[0], decryptionNonce[1]);
             writeCharacteristic(maRxCharacteristic, new Data(FruityPacket.createEncryptCustomSNonce(customSNonce)))
-                    .split(new FruityDataSplitter(encryptionNonce, encryptionKey)).with(ledCallback).enqueue();
+                    .split(new FruityDataSplitter(encryptionNonce, encryptionKey)).with(fruityEncryptDataCallback).enqueue();
         }
 
         @Override
@@ -246,7 +249,7 @@ public class BlinkyManager extends ObservableBleManager {
 
         @Override
         public void onDataSent(@NonNull BluetoothDevice device, @NonNull Data data) {
-            if (encryptionState == FruityPacket.EncryptionState.ENCRYPTED) encryptionNonce[1] += 2;
+//            if (encryptionState == FruityPacket.EncryptionState.ENCRYPTED) encryptionNonce[1] += 2;
         }
     };
 
@@ -271,7 +274,7 @@ public class BlinkyManager extends ObservableBleManager {
             encryptionState = FruityPacket.EncryptionState.ENCRYPTING;
             FruityPacket.ConnPacketEncryptCustomStart encryptCustomStartPacket = new FruityPacket.ConnPacketEncryptCustomStart(
                     FruityPacket.MessageType.ENCRYPT_CUSTOM_START, FruityPacket.nodeId, 0, 1,
-                    FruityPacket.FmKeyId.NODE, 0, 0);
+                    FruityPacket.FmKeyId.NETWORK, 1, 0);
             writeCharacteristic(maRxCharacteristic, new Data(FruityPacket.createEncryptCustomStartPacket(encryptCustomStartPacket))).
                     split(new FruityDataSplitter(null, null)).with(fruityEncryptDataCallback).enqueue();
         }
@@ -333,5 +336,41 @@ public class BlinkyManager extends ObservableBleManager {
         writeCharacteristic(ledCharacteristic,
                 on ? BlinkyLED.turnOn() : BlinkyLED.turnOff())
                 .with(ledCallback).enqueue();
+    }
+
+    public void sendFruityPacketByCmdContent(Map<String, String> param) throws Exception {
+        byte[] cmdPacket = null;
+        switch (param.get(FruityPacket.CMD_KEY)) {
+            case "enroll":
+                EnrollmentModule enroll = new EnrollmentModule();
+                String serialIndex = param.get(FruityPacket.SERIAL_INDEX_KEY);
+                short newNodeId = Short.parseShort(param.get(FruityPacket.NEW_NODE_ID_KEY));
+                EnrollmentModule.EnrollmentModuleSetEnrollmentBySerialMessage message =
+                        new EnrollmentModule.EnrollmentModuleSetEnrollmentBySerialMessage(
+                                FruityPacket.getIndexForSerial(serialIndex.isEmpty() ? "FMDVR" : serialIndex), newNodeId, (short) 13,
+                                new byte[]{0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22},
+                                new byte[]{0x21, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22},
+                                new byte[]{0x21, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22},
+                                new byte[]{0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11},
+                                (byte) 10, false);
+                cmdPacket = enroll.createSendModuleActionMessagePacket(FruityPacket.MessageType.MODULE_TRIGGER_ACTION, (short) (this.partnerId), (byte) 0,
+                        EnrollmentModule.EnrollmentModuleTriggerActionMessages.SET_ENROLLMENT_BY_SERIAL.getActionType(),
+                        enroll.createEnrollmentModuleSetEnrollmentBySerialMessagePacket(message),
+                        EnrollmentModule.EnrollmentModuleSetEnrollmentBySerialMessage.SIZEOF_ENROLLMENT_MODULE_SET_ENROLLMENT_BY_SERIAL_MESSAGE,
+                        false);
+                break;
+            case "status":
+                cmdPacket = new StatusReporterModule().createSendModuleActionMessagePacket(
+                        FruityPacket.MessageType.MODULE_TRIGGER_ACTION, (short) (0), (byte) 0,
+                        StatusReporterModule.StatusModuleTriggerActionMessages.GET_STATUS.getActionType(),
+                        null, 0, false);
+            default:
+        }
+        if (cmdPacket == null) {
+            throw new Exception("not supported cmd");
+        }
+        writeCharacteristic(maRxCharacteristic, new Data(cmdPacket))
+                .split(new FruityDataSplitter(encryptionNonce, encryptionKey)).with(fruityEncryptDataCallback).enqueue();
+
     }
 }

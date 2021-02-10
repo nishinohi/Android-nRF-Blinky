@@ -1,7 +1,5 @@
 package no.nordicsemi.android.blinky;
 
-import android.util.Log;
-
 import org.junit.Test;
 
 import java.security.InvalidKeyException;
@@ -14,6 +12,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import no.nordicsemi.android.ble.data.Data;
+import no.nordicsemi.android.blinky.profile.module.EnrollmentModule;
 import no.nordicsemi.android.blinky.profile.packet.FruityDataSplitter;
 import no.nordicsemi.android.blinky.profile.packet.FruityPacket;
 
@@ -22,7 +21,7 @@ import static org.hamcrest.CoreMatchers.*;
 
 public class PacketConvertTest {
     @Test
-    public void packet_Convert_Test() {
+    public void packet_Create_Encrypt_Custom_Start_Test() {
         FruityPacket.ConnPacketEncryptCustomStart packet = new FruityPacket.ConnPacketEncryptCustomStart(
                 FruityPacket.MessageType.ENCRYPT_CUSTOM_START, 259, 100, 1,
                 FruityPacket.FmKeyId.NODE, 1, 57);
@@ -258,4 +257,53 @@ public class PacketConvertTest {
         assertThat("Split chunk last", target, is(expect));
     }
 
+    @Test
+    public void get_Index_For_Serial_Test() {
+        String test = "FMDVR";
+        assertThat("serial index convert", FruityPacket.getIndexForSerial(test), is(2675293));
+    }
+
+    @Test
+    public void create_Enrollment_Module_Set_Enrollment_BySerial_Message_Packet_Test() {
+        EnrollmentModule.EnrollmentModuleSetEnrollmentBySerialMessage message =
+                new EnrollmentModule.EnrollmentModuleSetEnrollmentBySerialMessage(
+                        FruityPacket.getIndexForSerial("FMDVR"), (short) 100, (short) 101,
+                        new byte[]{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4}, new byte[]{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+                        new byte[]{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4}, new byte[]{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+                        (byte) 100, true);
+        byte[] packet = new EnrollmentModule().createEnrollmentModuleSetEnrollmentBySerialMessagePacket(message);
+        byte[] expect = {
+                0x5D, (byte) 0xD2, 0x28, 0x00, 0x64, 0x00, 0x65, 0x00,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                (byte) 0xE4};
+        assertThat("enroll", packet, is(expect));
+    }
+
+    @Test
+    public void create_Enrollment_Module_Set_Enrollment_BySerial_Message_Action_Packet_Test() {
+        EnrollmentModule.EnrollmentModuleSetEnrollmentBySerialMessage message =
+                new EnrollmentModule.EnrollmentModuleSetEnrollmentBySerialMessage(
+                        FruityPacket.getIndexForSerial("FMDVR"), (short) 100, (short) 101,
+                        new byte[]{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4}, new byte[]{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+                        new byte[]{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4}, new byte[]{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+                        (byte) 100, true);
+        EnrollmentModule enroll = new EnrollmentModule();
+        byte[] packet = enroll.createEnrollmentModuleSetEnrollmentBySerialMessagePacket(message);
+        byte[] expect = {
+                0x33, 0x77, 0x02, 0x64, 0x00, 0x05, 0x00, 0x00,
+                0x5D, (byte) 0xD2, 0x28, 0x00, 0x64, 0x00, 0x65, 0x00,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,
+                (byte) 0xE4};
+        byte[] actionPacket = enroll.createSendModuleActionMessagePacket(FruityPacket.MessageType.MODULE_TRIGGER_ACTION, (short)100, (byte)0,
+                EnrollmentModule.EnrollmentModuleTriggerActionMessages.SET_ENROLLMENT_BY_SERIAL.getActionType(),
+                packet, packet.length, false);
+        assertThat("action", actionPacket, is(expect));
+    }
 }
+

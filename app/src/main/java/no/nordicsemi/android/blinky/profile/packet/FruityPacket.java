@@ -24,9 +24,15 @@ public class FruityPacket {
     public static final int MESH_ACCESS_MIC_LENGTH = 4;
     public static final int FRUITY_MTU = 20;
     public static final SecretKey secretKey = new SecretKeySpec(
-            new byte[]{0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11},
+//            new byte[]{0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11},
+            new byte[]{0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22},
             "AES"
     );
+    public static int INVALID_SERIAL_NUMBER_INDEX = 0xFFFFFFFF;
+
+    public static final String CMD_KEY = "CMD";
+    public static final String SERIAL_INDEX_KEY = "SERIAL_INDEX";
+    public static final String NEW_NODE_ID_KEY = "NEW_NODE_ID";
 
     private static byte[] createConnHeaderBytes(ConnPacketHeader header) {
         byte[] headerBytes = new byte[ConnPacketHeader.SIZEOF_CONN_PACKET_HEADER];
@@ -199,8 +205,12 @@ public class FruityPacket {
         return new int[]{aNonceFirst, aNonceSecond};
     }
 
-    public static byte[] convertIntToBytes(int sNonce, ByteOrder order) {
-        return ByteBuffer.allocate(4).order(order).putInt(sNonce).array();
+    public static byte[] convertIntToBytes(int src, ByteOrder order) {
+        return ByteBuffer.allocate(4).order(order).putInt(src).array();
+    }
+
+    public static byte[] convertShortToBytes(short src, ByteOrder order) {
+        return ByteBuffer.allocate(2).order(order).putShort(src).array();
     }
 
     /**
@@ -243,12 +253,46 @@ public class FruityPacket {
         return ByteBuffer.wrap(connectionPacketHeader, 5, 2).order(ByteOrder.LITTLE_ENDIAN).getShort();
     }
 
+    public static int getIndexForSerial(String serialNumber) {
+        String serialAlphabet = "BCDFGHJKLMNPQRSTVWXYZ123456789";
+        int index = 0;
+        int serialLength = serialNumber.length();
+        int charCounter = 0;
+        for (int i = 0; i < serialLength; i++) {
+            if (i == serialLength - 1 && serialNumber.charAt(0) == 'A') continue;
+            char currentChar = serialNumber.charAt(serialLength - i - 1);
+            int charPos = serialAlphabet.indexOf(currentChar);
+            if (charPos == -1) {
+                return INVALID_SERIAL_NUMBER_INDEX;
+            }
+            index += Math.pow(serialAlphabet.length(), charCounter) * charPos;
+            charCounter++;
+        }
+        return index;
+    }
+
     public static final class ConnPacketHeader {
         public MessageType messageType;
         public int sender;
         public int receiver;
 
         public static final int SIZEOF_CONN_PACKET_HEADER = 5;
+    }
+
+    public static final class ConnPacketModule {
+        public ConnPacketModule(ConnPacketHeader header, byte moduleId, byte requestHandle, byte actionType) {
+            this.header = header;
+            this.moduleId = moduleId;
+            this.requestHandle = requestHandle;
+            this.actionType = actionType;
+        }
+
+        public static int SIZEOF_CONN_PACKET_MODULE = ConnPacketHeader.SIZEOF_CONN_PACKET_HEADER + 3;
+
+        private ConnPacketHeader header;
+        private byte moduleId;
+        private byte requestHandle;
+        private byte actionType;
     }
 
     public static class PacketSplitHeader {
@@ -298,41 +342,41 @@ public class FruityPacket {
     }
 
     public enum MessageType {
-        INVALID((byte)0),
-        SPLIT_WRITE_CMD((byte)16), //Used if a WRITE_CMD message is split
-        SPLIT_WRITE_CMD_END((byte)17), //Used if a WRITE_CMD message is split
-        CLUSTER_WELCOME((byte)20), //The initial message after a connection setup ((byte)Sent between two nodes)
-        CLUSTER_ACK_1((byte)21), //Both sides must acknowledge the handshake ((byte)Sent between two nodes)
-        CLUSTER_ACK_2((byte)22), //Second ack ((byte)Sent between two nodes)
-        CLUSTER_INFO_UPDATE((byte)23), //When the cluster size changes), this message is used ((byte)Sent to all nodes)
-        RECONNECT((byte)24), //Sent while trying to reestablish a connection
-        ENCRYPT_CUSTOM_START((byte)25),
-        ENCRYPT_CUSTOM_ANONCE((byte)26),
-        ENCRYPT_CUSTOM_SNONCE((byte)27),
-        ENCRYPT_CUSTOM_DONE((byte)28),
-        UPDATE_TIMESTAMP((byte)30), //Used to enable timestamp distribution over the mesh
-        UPDATE_CONNECTION_INTERVAL((byte)31), //Instructs a node to use a different connection interval
-        ASSET_LEGACY((byte)32),
-        CAPABILITY((byte)33),
-        ASSET_GENERIC((byte)34),
-        SIG_MESH_SIMPLE((byte)35), //A lightweight wrapper for SIG mesh access layer messages
-        MODULE_MESSAGES_START((byte)50),
-        MODULE_CONFIG((byte)50), //Used for many different messages that set and get the module config
-        MODULE_TRIGGER_ACTION((byte)51), //Trigger some custom module action
-        MODULE_ACTION_RESPONSE((byte)52), //Response on a triggered action
-        MODULE_GENERAL((byte)53), //A message), generated by the module not as a response to an action), e.g. an event
-        MODULE_RAW_DATA((byte)54),
-        MODULE_RAW_DATA_LIGHT((byte)55),
-        COMPONENT_ACT((byte)58), //Actuator messages
-        COMPONENT_SENSE((byte)59), //Sensor messages
-        MODULE_MESSAGES_END((byte)59),
-        TIME_SYNC((byte)60),
-        DEAD_DATA((byte)61), //Used by the MeshAccessConnection when malformed data was received.
-        DATA_1((byte)80),
-        DATA_1_VITAL((byte)81),
-        CLC_DATA((byte)83),
-        RESERVED_BIT_START((byte)128),
-        RESERVED_BIT_END((byte)255),
+        INVALID((byte) 0),
+        SPLIT_WRITE_CMD((byte) 16), //Used if a WRITE_CMD message is split
+        SPLIT_WRITE_CMD_END((byte) 17), //Used if a WRITE_CMD message is split
+        CLUSTER_WELCOME((byte) 20), //The initial message after a connection setup ((byte)Sent between two nodes)
+        CLUSTER_ACK_1((byte) 21), //Both sides must acknowledge the handshake ((byte)Sent between two nodes)
+        CLUSTER_ACK_2((byte) 22), //Second ack ((byte)Sent between two nodes)
+        CLUSTER_INFO_UPDATE((byte) 23), //When the cluster size changes), this message is used ((byte)Sent to all nodes)
+        RECONNECT((byte) 24), //Sent while trying to reestablish a connection
+        ENCRYPT_CUSTOM_START((byte) 25),
+        ENCRYPT_CUSTOM_ANONCE((byte) 26),
+        ENCRYPT_CUSTOM_SNONCE((byte) 27),
+        ENCRYPT_CUSTOM_DONE((byte) 28),
+        UPDATE_TIMESTAMP((byte) 30), //Used to enable timestamp distribution over the mesh
+        UPDATE_CONNECTION_INTERVAL((byte) 31), //Instructs a node to use a different connection interval
+        ASSET_LEGACY((byte) 32),
+        CAPABILITY((byte) 33),
+        ASSET_GENERIC((byte) 34),
+        SIG_MESH_SIMPLE((byte) 35), //A lightweight wrapper for SIG mesh access layer messages
+        MODULE_MESSAGES_START((byte) 50),
+        MODULE_CONFIG((byte) 50), //Used for many different messages that set and get the module config
+        MODULE_TRIGGER_ACTION((byte) 51), //Trigger some custom module action
+        MODULE_ACTION_RESPONSE((byte) 52), //Response on a triggered action
+        MODULE_GENERAL((byte) 53), //A message), generated by the module not as a response to an action), e.g. an event
+        MODULE_RAW_DATA((byte) 54),
+        MODULE_RAW_DATA_LIGHT((byte) 55),
+        COMPONENT_ACT((byte) 58), //Actuator messages
+        COMPONENT_SENSE((byte) 59), //Sensor messages
+        MODULE_MESSAGES_END((byte) 59),
+        TIME_SYNC((byte) 60),
+        DEAD_DATA((byte) 61), //Used by the MeshAccessConnection when malformed data was received.
+        DATA_1((byte) 80),
+        DATA_1_VITAL((byte) 81),
+        CLC_DATA((byte) 83),
+        RESERVED_BIT_START((byte) 128),
+        RESERVED_BIT_END((byte) 255),
         ;
 
         private final byte type;

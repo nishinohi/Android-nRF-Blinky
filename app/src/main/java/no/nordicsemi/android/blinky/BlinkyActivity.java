@@ -36,11 +36,15 @@ import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import no.nordicsemi.android.ble.livedata.state.ConnectionState;
 import no.nordicsemi.android.blinky.adapter.DiscoveredBluetoothDevice;
+import no.nordicsemi.android.blinky.profile.packet.FruityPacket;
 import no.nordicsemi.android.blinky.viewmodels.BlinkyViewModel;
 
 @SuppressWarnings("ConstantConditions")
@@ -83,8 +87,11 @@ public class BlinkyActivity extends AppCompatActivity {
 		// button
 		Button button = findViewById(R.id.fm_packet_send_button);
 		button.setOnClickListener(view -> {
-			String packetToSend = ((TextView)findViewById(R.id.fm_input_text)).getText().toString();
-			Log.d("FM", "packet: " + packetToSend);
+			Map<String, String> param = new HashMap<>();
+			param.put(FruityPacket.CMD_KEY, ((TextView) findViewById(R.id.fm_input_text)).getText().toString());
+			param.put(FruityPacket.SERIAL_INDEX_KEY , ((TextView) findViewById(R.id.fm_input_serial_index)).getText().toString());
+			param.put(FruityPacket.NEW_NODE_ID_KEY , ((TextView) findViewById(R.id.fm_input_new_node_id)).getText().toString());
+			viewModel.sendFruityCmdPacket(param);
 		});
 
 		led.setOnCheckedChangeListener((buttonView, isChecked) -> viewModel.setLedState(isChecked));
@@ -139,6 +146,4 @@ public class BlinkyActivity extends AppCompatActivity {
 		}
 	}
 
-	public void onSendPacket(View view) {
-	}
 }
